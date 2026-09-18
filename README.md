@@ -2,6 +2,10 @@
 
 [![CI](https://github.com/owain323/spendpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/owain323/spendpilot/actions/workflows/ci.yml)
 
+**Live demo:** https://spendpilot.owain32380.cn — the web experience and the
+MCP endpoint (`/mcp`, Streamable HTTP) are both served publicly. All
+providers are simulated; no credentials exist anywhere.
+
 **An agentic spending copilot for households and small teams — it watches your bills across providers, proves what you can save, and with your signed mandate it executes the fix and hands you the receipt. Every decision is recorded.**
 
 > It doesn't wait for you to ask. It proves before it proposes. And it never moves a cent without your signed authorization.
@@ -97,6 +101,9 @@ SHA256SUMS.txt        whole-repo integrity manifest
 `tools.py` is implemented once and exposed three ways: over MCP, in-process
 for the web agent, and inside the sealed benchmark. One implementation, three
 surfaces.
+
+Annotated walkthrough with figures: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+(system diagram, the mandate loop, and the claims-to-evidence map).
 
 ## Quickstart
 

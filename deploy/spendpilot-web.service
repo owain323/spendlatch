@@ -7,7 +7,7 @@ Type=simple
 User=spendpilot
 Group=spendpilot
 WorkingDirectory=/opt/spendpilot
-Environment=SPENDPILOT_WEB_PORT=8200
+Environment=SPENDPILOT_WEB_PORT=8201
 ExecStart=/opt/spendpilot/.venv/bin/python -m agent.backend
 Restart=on-failure
 RestartSec=3
