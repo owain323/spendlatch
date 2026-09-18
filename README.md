@@ -1,0 +1,160 @@
+# SpendPilot
+
+**An agentic spending copilot for households and small teams — it watches your bills across providers, proves what you can save, and with your signed mandate it executes the fix and hands you the receipt. Every decision is recorded.**
+
+> It doesn't wait for you to ask. It proves before it proposes. And it never moves a cent without your signed authorization.
+
+Built for the Amazon *Build, Ship, Shape* Hackathon (Alexa+ track). The tool
+layer is a self-hosted **MCP server over Streamable HTTP** (spec 2025-11-25)
+with an **MCP Apps** approval surface (SEP-1865); the web app is a
+**simulated Alexa+ experience** — voice-first conversation, rich cards and
+carousels, and state that survives across sessions.
+
+---
+
+## Why 2026 needs this
+
+Token prices fell ~280x in two years, yet AI bills kept climbing — agents fan
+out into 10-200 metered calls per task. The bill problem is no longer per-token
+price; it is **usage patterns and unit economics**. SpendPilot watches cost per
+task (the canary), not just total spend (the smoke alarm) — and it does the same
+for the rest of the household stack: cloud, SaaS seats, trials, subscriptions.
+
+And in 2026 the bar for agents moved again: agentic-payment protocols (AP2,
+ACP, x402) all converged on the same shape — an agent that touches money must
+carry **proof of human authorization, bounded in scope and time, with an audit
+trail**. SpendPilot implements that shape end to end.
+
+## The action loop — the part most demos skip
+
+```
+detect -> prove -> propose -> [human approves] -> signed mandate -> execute -> receipt
+```
+
+- **propose** — the agent attaches its proof to a concrete, bounded action
+  (one provider, one operation, a dollar cap).
+- **approve** — the human authorizes; the server issues a signed mandate:
+  HMAC-SHA256 over a canonical payload, single-use, scope-capped at the
+  current bill, 15-minute expiry. A local stand-in for AP2 verifiable
+  credentials — labeled as such, never oversold.
+- **execute** — the provider adapter runs ONLY if the mandate verifies:
+  signature, expiry, single-use, and scope drift (if the real bill rose past
+  the approved cap, execution is refused and re-approval is required).
+- **receipt** — the adapter's report lands in the decision ledger.
+- **every refusal is logged** — unknown, forged, expired, replayed, or
+  drifted mandates all produce structured refusals with ledger entries.
+  Nothing executes on trust.
+
+## Why it is not another expense tracker
+
+- **Proactive, not reactive** — open the app and the agent speaks first: it has
+  already swept your providers and found what needs attention.
+- **Proof before proposals** — every saving suggestion ships with a
+  before/after scenario estimate, a computed confidence level, a risk note, and
+  the evidence chain. Estimates are never presented as realized savings.
+- **Judgment, including refusal** — when spend growth tracks real value (API
+  costs scaling with a launch), the agent says *do not cut this* and shows why.
+- **Silence is auditable** — low-confidence findings are held, repeats are
+  suppressed, and **every decision is logged with a reason** in the decision
+  ledger. Ask "why didn't you tell me?" and get a real answer. Overrule any
+  entry (`challenge #3`) and your overrule becomes context.
+- **Cross-session memory** — budgets, acknowledgements, challenges, mandates,
+  receipts, and the ledger persist server-side. Close the page, come back
+  tomorrow: it remembers.
+- **MCP Apps native** — `propose_action` links an interactive approval card
+  (`ui://spendpilot/approval-card`, `text/html;profile=mcp-app`) that hosts
+  render inline; the same HTML speaks the postMessage JSON-RPC bridge.
+- **The MCP server is the product** — 13 typed tools, 100 tests, a sealed
+  benchmark; not a thin wrapper around an existing API.
+
+## Architecture
+
+```
+web/ (simulated Alexa+ experience)
+  │  voice-first chat UI · evidence-chain cards · mandate/receipt cards · ledger panel
+  ▼
+agent/backend.py (FastAPI)  +  agent/brain.py (deterministic intent routing;
+  │                                        LLM loop is an optional layer)
+  ▼
+mcp_server/server.py — MCP over Streamable HTTP (spec 2025-11-25, 13 tools)
+  │                   + MCP Apps resource ui://spendpilot/approval-card (SEP-1865)
+  ▼
+mcp_server/tools.py (pure analysis — single source of truth)
+  ├── sample_data.py  synthetic multi-provider bills, 6 months + task volumes
+  ├── store.py        local JSON persistence = cross-session state
+  ├── ledger.py       decision event stream (alert / suppress / hold / refuse / ...)
+  ├── actions.py      mandate-gated loop: propose -> approve -> execute
+  └── adapters.py     simulated provider adapters (aws / figma / zoom / openai)
+
+benchmarks/           sealed two-phase evaluation (predictions sealed before
+                      gold labels are opened) — 12 held-out cases
+docs/                 CLAIMS.md · SCOPE-FREEZE.md · JUDGE-REPRODUCTION.md · EVIDENCE.md
+SHA256SUMS.txt        whole-repo integrity manifest
+```
+
+`tools.py` is implemented once and exposed three ways: over MCP, in-process
+for the web agent, and inside the sealed benchmark. One implementation, three
+surfaces.
+
+## Quickstart
+
+Requires Python ≥ 3.11. Zero credentials needed.
+
+```bash
+pip install -e .            # or: pip install mcp fastapi uvicorn pytest
+python run_checks.py        # tests + sealed benchmark + MCP wire roundtrip + integrity + language
+
+# Surface 1: the MCP server (Streamable HTTP)
+python -m mcp_server.server          # http://127.0.0.1:8101/mcp
+python tools/mcp_roundtrip.py        # or let a real MCP client prove it end to end
+
+# Surface 2: the simulated Alexa+ web experience
+python -m agent.backend              # http://127.0.0.1:8200
+python tools/e2e_flow.py             # or let the probe drive the full flow
+```
+
+Open http://127.0.0.1:8200 — the agent opens the conversation. Try:
+
+- `anything unusual?`
+- `prove the saving` — then `approve` — then `execute`
+- `execute` again — watch the replay get refused and logged
+- `cost per task`
+- `set a $300 budget for home`
+- close the tab, reopen it — your budget is still there
+- `why didn't you tell me?`
+
+Judges: see [docs/JUDGE-REPRODUCTION.md](docs/JUDGE-REPRODUCTION.md) for the
+5-minute, zero-credential reproduction protocol with pass criteria.
+
+## Verification status
+
+| Claim | Evidence |
+|---|---|
+| 100 automated tests pass (tools, ledger, store, actions, benchmark, API, MCP wire) | `docs/evidence/test-run.txt` |
+| Detection: flag precision 1.0 / recall 1.0, keep/hold accuracy 1.0 (12 sealed cases) | `benchmarks/results/metrics.json` |
+| Real MCP client roundtrip: protocol 2025-11-25, 13/13 tools, action loop + ui:// resource over the wire | `docs/evidence/mcp-roundtrip.txt` |
+| End-to-end web flow (9 criteria, incl. mandate replay refusal) | `docs/evidence/e2e-flow.txt` |
+
+Full claim-to-evidence binding: [docs/CLAIMS.md](docs/CLAIMS.md).
+Graded evidence register (what is NOT verified is marked so): [docs/EVIDENCE.md](docs/EVIDENCE.md).
+
+## Security & privacy
+
+- All billing data is **synthetic sample data**; no real accounts, credentials,
+  or network calls to providers. Adapters are labeled `simulated: true`.
+- State lives in one local JSON file (`data/state.json`, overridable via the
+  `SPENDPILOT_STATE` env var). Nothing leaves your machine.
+- The agent proposes; the human decides. Execution requires a signed,
+  single-use, scope-capped, expiring mandate — and every refusal is logged.
+
+## Roadmap (post-hackathon)
+
+- Optional LLM loop (Strands + a local model) layered on the same tool calls
+- Import real usage snapshots (CSV / provider exports) behind an explicit,
+  local-only ingest path
+- Production mandate signing bound to device keys / AP2 verifiable credentials,
+  and real provider adapters behind the same mandate gate
+
+## License
+
+MIT — see [LICENSE](LICENSE).

@@ -1,0 +1,17 @@
+#!/bin/sh
+# Fail-closed CJK guard: nothing with Chinese/Japanese/Korean characters
+# may enter the public repository. See check_no_cjk.py.
+PYTHON="${SPENDPILOT_HOOK_PYTHON:-}"
+if [ -z "$PYTHON" ]; then
+    if command -v python >/dev/null 2>&1; then
+        PYTHON=python
+    elif command -v python3 >/dev/null 2>&1; then
+        PYTHON=python3
+    elif command -v py >/dev/null 2>&1; then
+        PYTHON="py -3"
+    else
+        echo "pre-commit: no python found — refusing to commit (fail-closed)." >&2
+        exit 1
+    fi
+fi
+"$PYTHON" "$(dirname "$0")/check_no_cjk.py" --staged

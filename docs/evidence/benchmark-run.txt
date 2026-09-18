@@ -1,0 +1,5 @@
+cases: 12
+flag precision: 1.0  recall: 1.0
+keep accuracy: 1.0  hold accuracy: 1.0
+cases fully correct: 12/12
+BENCHMARK_OK

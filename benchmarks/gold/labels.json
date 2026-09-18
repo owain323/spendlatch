@@ -1,0 +1,14 @@
+{
+  "c01-idle-cloud-spike": {"flag": ["spike-cloudx"], "keep": [], "hold": []},
+  "c02-growth-is-value": {"flag": [], "keep": ["keep-apiy"], "hold": []},
+  "c03-trial-conversion": {"flag": ["trial-saasx"], "keep": [], "hold": []},
+  "c04-zombie": {"flag": ["zombie-appx"], "keep": [], "hold": []},
+  "c05-task-drift": {"flag": ["taskdrift-aix"], "keep": [], "hold": []},
+  "c06-insufficient-history": {"flag": [], "keep": [], "hold": ["ineligible-newco"]},
+  "c07-small-change-no-alert": {"flag": [], "keep": [], "hold": []},
+  "c08-small-dollar-spike": {"flag": [], "keep": [], "hold": []},
+  "c09-multi-provider": {"flag": ["spike-cloudy", "zombie-desktool"], "keep": [], "hold": []},
+  "c10-trend-not-spike": {"flag": [], "keep": [], "hold": []},
+  "c11-volume-up-cost-flat": {"flag": [], "keep": [], "hold": []},
+  "c12-strong-spike-confidence": {"flag": ["spike-blast"], "keep": [], "hold": []}
+}

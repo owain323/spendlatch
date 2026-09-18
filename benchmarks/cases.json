@@ -1,0 +1,119 @@
+{
+  "months": ["2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08"],
+  "cases": [
+    {
+      "id": "c01-idle-cloud-spike",
+      "note": "flat baseline then +45% spike with idle utilization",
+      "providers": [
+        {"id": "cloudx", "name": "CloudX", "category": "cloud",
+         "monthly": {"2026-03": 100.0, "2026-04": 102.0, "2026-05": 101.0, "2026-06": 104.0, "2026-07": 105.0, "2026-08": 152.25},
+         "evidence": {"driver": "vm", "detail": "VM idle 21 days at 2% CPU", "usage_matches_value": false}}
+      ]
+    },
+    {
+      "id": "c02-growth-is-value",
+      "note": "spend doubles but usage matches value -> keep, never flag",
+      "providers": [
+        {"id": "apiy", "name": "ApiY", "category": "ai-api",
+         "monthly": {"2026-03": 40.0, "2026-04": 42.0, "2026-05": 44.0, "2026-06": 60.0, "2026-07": 90.0, "2026-08": 135.0},
+         "task_volume": {"2026-03": 8000, "2026-04": 8400, "2026-05": 8800, "2026-06": 12000, "2026-07": 18000, "2026-08": 27000},
+         "evidence": {"driver": "tokens", "detail": "usage tracks launch traffic 1:1", "usage_matches_value": true}}
+      ]
+    },
+    {
+      "id": "c03-trial-conversion",
+      "note": "silent trial to paid conversion",
+      "providers": [
+        {"id": "saasx", "name": "SaaSX", "category": "saas",
+         "monthly": {"2026-03": 0.0, "2026-04": 0.0, "2026-05": 0.0, "2026-06": 0.0, "2026-07": 0.0, "2026-08": 19.0},
+         "evidence": {"driver": "trial_conversion", "detail": "trial ended 2026-08-01, converted without upgrade", "trial_end": "2026-08-01", "last_used_days": 50, "usage_matches_value": false}}
+      ]
+    },
+    {
+      "id": "c04-zombie",
+      "note": "flat billing, unused 90 days",
+      "providers": [
+        {"id": "appx", "name": "AppX", "category": "saas",
+         "monthly": {"2026-03": 12.0, "2026-04": 12.0, "2026-05": 12.0, "2026-06": 12.0, "2026-07": 12.0, "2026-08": 12.0},
+         "evidence": {"driver": "seats", "detail": "seat unused", "last_used_days": 90, "usage_matches_value": true}}
+      ]
+    },
+    {
+      "id": "c05-task-drift",
+      "note": "cost per task +33% MoM while volume falls -> canary",
+      "providers": [
+        {"id": "aix", "name": "AIX", "category": "ai-api",
+         "monthly": {"2026-03": 38.0, "2026-04": 39.0, "2026-05": 39.5, "2026-06": 40.0, "2026-07": 40.0, "2026-08": 48.0},
+         "task_volume": {"2026-03": 9500, "2026-04": 9750, "2026-05": 9875, "2026-06": 10000, "2026-07": 10000, "2026-08": 9000},
+         "evidence": {"driver": "tokens", "detail": "context bloat in prompts", "usage_matches_value": false}}
+      ]
+    },
+    {
+      "id": "c06-insufficient-history",
+      "note": "only 2 months of data -> refuse to judge (eligible=false)",
+      "providers": [
+        {"id": "newco", "name": "NewCo", "category": "saas",
+         "monthly": {"2026-07": 30.0, "2026-08": 45.0},
+         "evidence": {"driver": "seats", "detail": "new vendor", "usage_matches_value": true}}
+      ]
+    },
+    {
+      "id": "c07-small-change-no-alert",
+      "note": "+10% MoM is normal fluctuation -> silence is correct",
+      "providers": [
+        {"id": "stable", "name": "StableCo", "category": "saas",
+         "monthly": {"2026-03": 100.0, "2026-04": 101.0, "2026-05": 99.0, "2026-06": 100.0, "2026-07": 102.0, "2026-08": 112.2},
+         "evidence": {"driver": "seats", "detail": "normal variance", "last_used_days": 3, "usage_matches_value": true}}
+      ]
+    },
+    {
+      "id": "c08-small-dollar-spike",
+      "note": "+62% but only $5 in absolute terms -> not worth attention",
+      "providers": [
+        {"id": "tiny", "name": "TinyTool", "category": "saas",
+         "monthly": {"2026-03": 8.0, "2026-04": 8.0, "2026-05": 8.0, "2026-06": 8.0, "2026-07": 8.0, "2026-08": 13.0},
+         "evidence": {"driver": "seats", "detail": "minor price change", "last_used_days": 5, "usage_matches_value": true}}
+      ]
+    },
+    {
+      "id": "c09-multi-provider",
+      "note": "one spike + one zombie in the same household",
+      "providers": [
+        {"id": "cloudy", "name": "CloudY", "category": "cloud",
+         "monthly": {"2026-03": 200.0, "2026-04": 202.0, "2026-05": 205.0, "2026-06": 201.0, "2026-07": 210.0, "2026-08": 294.0},
+         "evidence": {"driver": "storage", "detail": "orphaned snapshots piling up", "usage_matches_value": false}},
+        {"id": "desktool", "name": "DeskTool", "category": "saas",
+         "monthly": {"2026-03": 9.0, "2026-04": 9.0, "2026-05": 9.0, "2026-06": 9.0, "2026-07": 9.0, "2026-08": 9.0},
+         "evidence": {"driver": "seats", "detail": "unused", "last_used_days": 75, "usage_matches_value": true}}
+      ]
+    },
+    {
+      "id": "c10-trend-not-spike",
+      "note": "steady small increases, each under thresholds -> no alert",
+      "providers": [
+        {"id": "creep", "name": "CreepCo", "category": "cloud",
+         "monthly": {"2026-03": 100.0, "2026-04": 103.0, "2026-05": 106.0, "2026-06": 109.0, "2026-07": 112.0, "2026-08": 115.0},
+         "evidence": {"driver": "vm", "detail": "gradual organic growth", "usage_matches_value": true}}
+      ]
+    },
+    {
+      "id": "c11-volume-up-cost-flat",
+      "note": "healthy AI provider: volume up, unit cost flat -> no canary",
+      "providers": [
+        {"id": "healthy", "name": "HealthyAI", "category": "ai-api",
+         "monthly": {"2026-03": 40.0, "2026-04": 42.0, "2026-05": 44.0, "2026-06": 46.0, "2026-07": 48.0, "2026-08": 50.0},
+         "task_volume": {"2026-03": 10000, "2026-04": 10500, "2026-05": 11000, "2026-06": 11500, "2026-07": 12000, "2026-08": 12500},
+         "evidence": {"driver": "tokens", "detail": "efficient scaling", "usage_matches_value": true}}
+      ]
+    },
+    {
+      "id": "c12-strong-spike-confidence",
+      "note": "spike + trend + utilization mismatch -> high confidence, 3 signals",
+      "providers": [
+        {"id": "blast", "name": "BlastCloud", "category": "cloud",
+         "monthly": {"2026-03": 100.0, "2026-04": 110.0, "2026-05": 121.0, "2026-06": 133.1, "2026-07": 146.41, "2026-08": 234.26},
+         "evidence": {"driver": "vm", "detail": "fleet of idle dev VMs left running", "usage_matches_value": false}}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+#!/bin/sh
+# Fail-closed CJK guard on push: scans EVERY git-tracked file, so nothing
+# that slipped past earlier commits can reach the public remote.
+PYTHON="${SPENDPILOT_HOOK_PYTHON:-}"
+if [ -z "$PYTHON" ]; then
+    if command -v python >/dev/null 2>&1; then
+        PYTHON=python
+    elif command -v python3 >/dev/null 2>&1; then
+        PYTHON=python3
+    elif command -v py >/dev/null 2>&1; then
+        PYTHON="py -3"
+    else
+        echo "pre-push: no python found — refusing to push (fail-closed)." >&2
+        exit 1
+    fi
+fi
+"$PYTHON" "$(dirname "$0")/check_no_cjk.py" --all

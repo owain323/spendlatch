@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<!--
+  SpendPilot approval card — an MCP App (SEP-1865, "text/html;profile=mcp-app").
+
+  Served by the MCP server as resource ui://spendpilot/approval-card and
+  linked from the propose_action tool via _meta.ui.resourceUri. Hosts that
+  implement MCP Apps (Claude, ChatGPT, Goose, VS Code) render this in a
+  sandboxed iframe and bridge tool calls over postMessage JSON-RPC.
+
+  The page degrades gracefully: with no host answering the ui/initialize
+  handshake within 1.5s it shows a static preview instead of hanging.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpendPilot — Approval Card</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: #0e1117; color: #e6e9f0; padding: 20px;
+  }
+  .card { max-width: 460px; margin: 0 auto; background: #161b26;
+          border: 1px solid #2a3244; border-radius: 14px; padding: 20px; }
+  .badge { display: inline-block; font-size: 11px; letter-spacing: .08em;
+           text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
+           background: #233149; color: #7fb4ff; margin-bottom: 10px; }
+  h1 { font-size: 17px; margin-bottom: 12px; }
+  .flow { display: flex; align-items: center; gap: 10px; font-size: 20px;
+          margin: 10px 0; }
+  .before { color: #ff8f8f; } .after { color: #7fe0a8; }
+  .arrow { color: #5b6679; }
+  ul { margin: 10px 0 14px 18px; font-size: 13px; color: #aeb6c6; }
+  li { margin: 4px 0; }
+  .meta { font-size: 12px; color: #7d8698; margin-top: 10px; }
+  button {
+    width: 100%; padding: 12px; font-size: 15px; font-weight: 600;
+    border: 0; border-radius: 10px; cursor: pointer; margin-top: 14px;
+    background: #2f7d4f; color: #fff;
+  }
+  button:hover { background: #37925d; }
+  button:disabled { background: #2a3244; color: #7d8698; cursor: default; }
+  #status { font-size: 13px; margin-top: 12px; min-height: 18px; }
+  #status.ok { color: #7fe0a8; } #status.err { color: #ff8f8f; }
+  .mandate { font-family: ui-monospace, monospace; font-size: 12px;
+             background: #0b0e14; border-radius: 8px; padding: 10px;
+             margin-top: 10px; word-break: break-all; display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <span class="badge">proposed action — proof attached</span>
+  <h1 id="title">Loading proposal...</h1>
+  <div class="flow">
+    <span class="before" id="before">—</span>
+    <span class="arrow">→</span>
+    <span class="after" id="after">—</span>
+  </div>
+  <ul id="proof"></ul>
+  <p class="meta" id="scope"></p>
+  <button id="approve">Approve — issue signed mandate</button>
+  <div class="mandate" id="mandate"></div>
+  <p id="status"></p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var msgId = 0;
+  var pending = {};
+  var proposal = null;
+  var bridged = false;
+
+  function rpc(method, params) {
+    return new Promise(function (resolve, reject) {
+      var id = "app-" + (++msgId);
+      pending[id] = { resolve: resolve, reject: reject };
+      window.parent.postMessage({ jsonrpc: "2.0", id: id, method: method, params: params }, "*");
+      setTimeout(function () {
+        if (pending[id]) { delete pending[id]; reject(new Error("host timeout")); }
+      }, 5000);
+    });
+  }
+
+  window.addEventListener("message", function (ev) {
+    var m = ev.data;
+    if (!m || m.jsonrpc !== "2.0") return;
+    if (m.id && pending[m.id]) {
+      var p = pending[m.id]; delete pending[m.id];
+      if (m.error) p.reject(new Error(m.error.message || "host error"));
+      else p.resolve(m.result);
+      return;
+    }
+    // Host pushes the calling tool's arguments once the iframe is ready.
+    if (m.method === "ui/notifications/tool-input" && m.params && m.params.arguments) {
+      render(m.params.arguments);
+    }
+  });
+
+  function money(v) { return "$" + Number(v).toFixed(2); }
+
+  function render(args) {
+    proposal = args.proposal || args;
+    if (!proposal) return;
+    document.getElementById("title").textContent = proposal.title || "Proposed action";
+    var snap = proposal.proof_snapshot || {};
+    if (snap.monthly_before !== undefined) {
+      document.getElementById("before").textContent = money(snap.monthly_before) + "/mo";
+      document.getElementById("after").textContent = money(snap.monthly_after) + "/mo";
+    }
+    var proof = (proposal.proof && proposal.proof.proof_steps) || [];
+    document.getElementById("proof").innerHTML = proof.map(function (s) {
+      var li = document.createElement("li"); li.textContent = s; return li.outerHTML;
+    }).join("");
+    document.getElementById("scope").textContent =
+      "Scope on approval: " + (proposal.operation || "") +
+      " — single use, cap " + money(snap.monthly_before || 0) + "/mo, expires 15 min after approval.";
+  }
+
+  document.getElementById("approve").addEventListener("click", function () {
+    var btn = this;
+    var status = document.getElementById("status");
+    if (!bridged) {
+      status.className = "err";
+      status.textContent = "Preview mode — open through an MCP Apps host to approve.";
+      return;
+    }
+    btn.disabled = true;
+    status.className = "";
+    status.textContent = "Requesting mandate...";
+    rpc("tools/call", {
+      name: "approve_action",
+      arguments: { proposal_id: proposal.proposal_id, approver: "human (via MCP App)" }
+    }).then(function (result) {
+      var data = result;
+      if (result && result.structuredContent) data = result.structuredContent;
+      if (result && result.content && result.content[0] && result.content[0].text) {
+        try { data = JSON.parse(result.content[0].text); } catch (e) { /* keep */ }
+      }
+      if (data && data.mandate_id) {
+        status.className = "ok";
+        status.textContent = "Mandate issued — say 'execute' to run it. Expires " + data.expires_at + ".";
+        var box = document.getElementById("mandate");
+        box.style.display = "block";
+        box.textContent = "mandate " + data.mandate_id + " · sig " +
+          String(data.signature).slice(0, 16) + "... · scope " + JSON.stringify(data.scope);
+      } else {
+        status.className = "err";
+        status.textContent = (data && data.error) || "Approval refused — see decision ledger.";
+        btn.disabled = false;
+      }
+    }).catch(function (e) {
+      status.className = "err";
+      status.textContent = "Bridge error: " + e.message;
+      btn.disabled = false;
+    });
+  });
+
+  // MCP Apps handshake. No answer within 1.5s -> standalone preview mode.
+  rpc("ui/initialize", {
+    appCapabilities: {}, protocolVersion: "2025-11-25",
+    appInfo: { name: "spendpilot-approval-card", version: "0.3.0" }
+  }).then(function () {
+    bridged = true;
+    document.getElementById("status").textContent = "Connected to host.";
+  }).catch(function () {
+    document.getElementById("title").textContent = "Approval card (preview)";
+    document.getElementById("status").textContent =
+      "No MCP host detected — static preview. Tool input arrives via ui/notifications/tool-input.";
+  });
+})();
+</script>
+</body>
+</html>

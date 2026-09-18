@@ -1,0 +1,1 @@
+"""SpendPilot MCP server package."""

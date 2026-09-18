@@ -1,0 +1,120 @@
+[
+  {
+    "case_id": "c01-idle-cloud-spike",
+    "flag": [
+      "spike-cloudx"
+    ],
+    "keep": [],
+    "hold": [],
+    "confidence": {
+      "spike-cloudx": "high"
+    }
+  },
+  {
+    "case_id": "c02-growth-is-value",
+    "flag": [],
+    "keep": [
+      "keep-apiy"
+    ],
+    "hold": [],
+    "confidence": {
+      "keep-apiy": "high"
+    }
+  },
+  {
+    "case_id": "c03-trial-conversion",
+    "flag": [
+      "trial-saasx"
+    ],
+    "keep": [],
+    "hold": [],
+    "confidence": {
+      "trial-saasx": "medium"
+    }
+  },
+  {
+    "case_id": "c04-zombie",
+    "flag": [
+      "zombie-appx"
+    ],
+    "keep": [],
+    "hold": [],
+    "confidence": {
+      "zombie-appx": "low"
+    }
+  },
+  {
+    "case_id": "c05-task-drift",
+    "flag": [
+      "taskdrift-aix"
+    ],
+    "keep": [],
+    "hold": [],
+    "confidence": {
+      "taskdrift-aix": "high"
+    }
+  },
+  {
+    "case_id": "c06-insufficient-history",
+    "flag": [],
+    "keep": [],
+    "hold": [
+      "ineligible-newco"
+    ],
+    "confidence": {
+      "ineligible-newco": null
+    }
+  },
+  {
+    "case_id": "c07-small-change-no-alert",
+    "flag": [],
+    "keep": [],
+    "hold": [],
+    "confidence": {}
+  },
+  {
+    "case_id": "c08-small-dollar-spike",
+    "flag": [],
+    "keep": [],
+    "hold": [],
+    "confidence": {}
+  },
+  {
+    "case_id": "c09-multi-provider",
+    "flag": [
+      "spike-cloudy",
+      "zombie-desktool"
+    ],
+    "keep": [],
+    "hold": [],
+    "confidence": {
+      "spike-cloudy": "high",
+      "zombie-desktool": "low"
+    }
+  },
+  {
+    "case_id": "c10-trend-not-spike",
+    "flag": [],
+    "keep": [],
+    "hold": [],
+    "confidence": {}
+  },
+  {
+    "case_id": "c11-volume-up-cost-flat",
+    "flag": [],
+    "keep": [],
+    "hold": [],
+    "confidence": {}
+  },
+  {
+    "case_id": "c12-strong-spike-confidence",
+    "flag": [
+      "spike-blast"
+    ],
+    "keep": [],
+    "hold": [],
+    "confidence": {
+      "spike-blast": "high"
+    }
+  }
+]

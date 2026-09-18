@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpendPilot — your spending copilot</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="orb" aria-hidden="true"></span>
+      <div>
+        <h1>SpendPilot</h1>
+        <p class="tagline">It watches. It proves. With your mandate, it acts.</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button id="ledger-toggle" class="ghost-btn" title="Open the decision ledger">Decision ledger</button>
+      <button id="new-session" class="ghost-btn" title="Start a fresh session">New session</button>
+    </div>
+  </header>
+
+  <section id="stats" class="stats" hidden>
+    <div class="stat"><span class="stat-value" id="stat-total">—</span><span class="stat-label" id="stat-month">this month</span></div>
+    <div class="stat"><span class="stat-value" id="stat-delta">—</span><span class="stat-label">vs last month</span></div>
+    <div class="stat"><span class="stat-value accent-warn" id="stat-anomalies">—</span><span class="stat-label">needs attention</span></div>
+    <div class="stat"><span class="stat-value accent-ok" id="stat-saving">—</span><span class="stat-label">proven saving / mo <em>(est.)</em></span></div>
+  </section>
+
+  <nav class="chips" aria-label="demo scenarios">
+    <button class="chip" data-say="anything unusual?">⚡ Weekly sweep</button>
+    <button class="chip" data-say="prove the saving">🔍 Prove the saving</button>
+    <button class="chip" data-say="approve">✅ Approve (sign mandate)</button>
+    <button class="chip" data-say="execute">▲ Execute with mandate</button>
+    <button class="chip" data-say="cost per task">📉 Cost per task</button>
+    <button class="chip" data-say="set a $300 budget for home">🎯 Set $300 home budget</button>
+    <button class="chip" data-say="why didn't you tell me?">🤫 What did you hold back?</button>
+  </nav>
+
+  <main id="chat" class="chat" aria-live="polite"></main>
+
+  <aside id="ledger-panel" class="ledger-panel" hidden>
+    <div class="ledger-head">
+      <h2>Decision ledger</h2>
+      <p>Every alert, hold, suppression and refusal — with its reason.</p>
+    </div>
+    <div id="ledger-body" class="ledger-body"></div>
+  </aside>
+
+  <footer class="composer">
+    <button id="mic" class="mic-btn" title="Voice input (optional — keyboard works too)">🎙</button>
+    <input id="input" type="text" autocomplete="off"
+           placeholder='Try "anything unusual?" or "set a $300 budget for home"'>
+    <button id="send" class="send-btn">Send</button>
+  </footer>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

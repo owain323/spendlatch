@@ -1,0 +1,92 @@
+"""API surface tests (FastAPI TestClient, in-process, offline)."""
+
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+
+from agent.backend import app
+
+
+@pytest.fixture()
+def client(tmp_path, monkeypatch):
+    monkeypatch.setenv("SPENDPILOT_STATE", str(tmp_path / "state.json"))
+    return TestClient(app)
+
+
+class TestOpening:
+    def test_agent_speaks_first(self, client):
+        res = client.get("/api/opening")
+        assert res.status_code == 200
+        body = res.json()
+        assert "found" in body["reply"]
+        assert body["cards"]  # unprompted anomaly cards
+        assert body["stats"]["saving_potential"] > 0
+
+    def test_session_id_created_and_stable(self, client):
+        first = client.get("/api/opening").json()
+        second = client.get("/api/opening", params={"session_id": first["session_id"]}).json()
+        assert second["session_id"] == first["session_id"]
+        assert "Welcome back" in second["reply"]
+
+
+class TestChat:
+    def test_prove_returns_labeled_estimate(self, client):
+        res = client.post("/api/chat", json={"message": "prove the saving"})
+        card = res.json()["cards"][0]
+        assert card["type"] == "saving"
+        assert card["monthly_before"] > card["monthly_after"]
+        assert "scenario estimate" in card["estimate_basis"]
+
+    def test_budget_roundtrip_and_memory(self, client):
+        sid = client.get("/api/opening").json()["session_id"]
+        res = client.post("/api/chat", json={"message": "set a $300 budget for home", "session_id": sid})
+        card = res.json()["cards"][0]
+        assert card["type"] == "budget"
+        assert card["monthly_limit"] == 300.0
+        assert card["status"] == "warn"
+        # cross-session memory: reopening the same session remembers
+        reopen = client.get("/api/opening", params={"session_id": sid}).json()
+        assert "Welcome back" in reopen["reply"]
+        assert any(c["type"] == "budget" for c in reopen["cards"])
+
+    def test_ledger_intent(self, client):
+        client.post("/api/chat", json={"message": "anything unusual?"})
+        res = client.post("/api/chat", json={"message": "why didn't you tell me?"})
+        assert res.json()["cards"][0]["type"] == "ledger"
+
+    def test_challenge_unknown_seq(self, client):
+        res = client.post("/api/chat", json={"message": "challenge #9999"})
+        assert "don't have" in res.json()["reply"]
+
+    def test_unknown_message_gets_help(self, client):
+        res = client.post("/api/chat", json={"message": "flibbertigibbet"})
+        assert "Try:" in res.json()["reply"]
+
+    def test_unit_economics_intent(self, client):
+        res = client.post("/api/chat", json={"message": "cost per task"})
+        card = res.json()["cards"][0]
+        assert card["type"] == "unit"
+        assert any(p["canary"] for p in card["providers"])
+
+
+class TestLedgerApi:
+    def test_ledger_grows_with_actions(self, client):
+        before = client.get("/api/ledger").json()["count"]
+        client.post("/api/chat", json={"message": "set a $300 budget for home"})
+        after = client.get("/api/ledger").json()["count"]
+        assert after > before
+
+    def test_unit_endpoint(self, client):
+        body = client.get("/api/unit-economics").json()
+        assert body["metric"] == "cost per 1K tasks"
+
+
+class TestStatic:
+    def test_index_served(self, client):
+        res = client.get("/")
+        assert res.status_code == 200
+        assert "SpendPilot" in res.text
+
+    def test_health(self, client):
+        assert client.get("/api/health").json() == {"status": "ok"}
