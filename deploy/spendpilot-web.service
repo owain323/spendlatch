@@ -1,0 +1,23 @@
+[Unit]
+Description=SpendPilot web app and chat API (FastAPI, loopback only)
+After=network.target
+
+[Service]
+Type=simple
+User=spendpilot
+Group=spendpilot
+WorkingDirectory=/opt/spendpilot
+Environment=SPENDPILOT_WEB_PORT=8200
+ExecStart=/opt/spendpilot/.venv/bin/python -m agent.backend
+Restart=on-failure
+RestartSec=3
+
+# The app only needs to write its state file under data/.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/spendpilot/data
+
+[Install]
+WantedBy=multi-user.target

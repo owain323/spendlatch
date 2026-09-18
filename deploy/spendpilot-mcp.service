@@ -1,0 +1,24 @@
+[Unit]
+Description=SpendPilot self-hosted MCP server (Streamable HTTP, loopback only)
+After=network.target
+
+[Service]
+Type=simple
+User=spendpilot
+Group=spendpilot
+WorkingDirectory=/opt/spendpilot
+Environment=SPENDPILOT_HOST=127.0.0.1
+Environment=SPENDPILOT_PORT=8101
+ExecStart=/opt/spendpilot/.venv/bin/python -m mcp_server.server
+Restart=on-failure
+RestartSec=3
+
+# The MCP server persists session state under data/ as well.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/spendpilot/data
+
+[Install]
+WantedBy=multi-user.target
