@@ -49,9 +49,30 @@ def digest(rel: Path) -> str:
     return hashlib.sha256((ROOT / rel).read_bytes()).hexdigest()
 
 
+def check_line_endings(files: list[Path]) -> int:
+    # Git stores LF (see .gitattributes), so the working tree must be LF
+    # too — otherwise the manifest hashes CRLF bytes that no fresh clone
+    # or CI checkout will ever reproduce.
+    bad = []
+    for rel in files:
+        try:
+            if b"\r\n" in (ROOT / rel).read_bytes():
+                bad.append(rel.as_posix())
+        except OSError:
+            pass
+    if bad:
+        print("CRLF line endings detected (convert these files to LF):")
+        print("\n".join(f"  {f}" for f in bad))
+        return 1
+    return 0
+
+
 def main() -> int:
     manifest = ROOT / "SHA256SUMS.txt"
-    lines = [f"{digest(rel)}  {rel.as_posix()}" for rel in tracked_files()]
+    files = tracked_files()
+    if check_line_endings(files):
+        return 1
+    lines = [f"{digest(rel)}  {rel.as_posix()}" for rel in files]
     if "--check" in sys.argv:
         if not manifest.exists():
             print("SHA256SUMS.txt missing — run tools/make_sha256sums.py")
