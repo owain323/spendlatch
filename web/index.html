@@ -10,51 +10,71 @@
 <div class="app">
   <header class="topbar">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">S</span>
+      <!-- Logo mark: Lucide "compass" (ISC license, https://lucide.dev) -->
+      <svg class="brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+      </svg>
       <div>
         <h1>SpendPilot</h1>
         <p class="tagline">It watches. It proves. With your mandate, it acts.</p>
       </div>
     </div>
-    <div class="top-actions">
-      <button id="ledger-toggle" class="ghost-btn" title="Open the decision ledger">Decision ledger</button>
-      <button id="new-session" class="ghost-btn" title="Start a fresh session">New session</button>
-    </div>
+    <button id="new-session" class="ghost-btn" title="Start a fresh session">New session</button>
   </header>
 
-  <section id="stats" class="stats" hidden>
-    <div class="stat"><span class="stat-value" id="stat-total">—</span><span class="stat-label" id="stat-month">this month</span></div>
-    <div class="stat"><span class="stat-value" id="stat-delta">—</span><span class="stat-label">vs last month</span></div>
-    <div class="stat"><span class="stat-value accent-warn" id="stat-anomalies">—</span><span class="stat-label">needs attention</span></div>
-    <div class="stat"><span class="stat-value accent-ok" id="stat-saving">—</span><span class="stat-label">proven saving / mo <em>(est.)</em></span></div>
-  </section>
+  <div class="layout">
+    <div class="main-col">
+      <nav class="chips" aria-label="demo scenarios">
+        <button class="chip" data-say="anything unusual?">Check this week</button>
+        <button class="chip" data-say="prove the saving">Prove the saving</button>
+        <button class="chip" data-say="approve">Approve (sign)</button>
+        <button class="chip" data-say="execute">Execute</button>
+        <button class="chip" data-say="why didn't you tell me?">What did you hold back?</button>
+      </nav>
 
-  <nav class="chips" aria-label="demo scenarios">
-    <button class="chip" data-say="anything unusual?">Weekly sweep</button>
-    <button class="chip" data-say="prove the saving">Prove the saving</button>
-    <button class="chip" data-say="approve">Approve (sign mandate)</button>
-    <button class="chip" data-say="execute">Execute with mandate</button>
-    <button class="chip" data-say="cost per task">Cost per task</button>
-    <button class="chip" data-say="set a $300 budget for home">Set $300 home budget</button>
-    <button class="chip" data-say="why didn't you tell me?">What did you hold back?</button>
-  </nav>
+      <main id="chat" class="chat" aria-live="polite"></main>
 
-  <main id="chat" class="chat" aria-live="polite"></main>
-
-  <aside id="ledger-panel" class="ledger-panel" hidden>
-    <div class="ledger-head">
-      <h2>Decision ledger</h2>
-      <p>Every alert, hold, suppression and refusal — with its reason.</p>
+      <footer class="composer">
+        <input id="input" type="text" autocomplete="off"
+               placeholder='Ask about this month, or say "prove the saving"'>
+        <button id="send" class="send-btn">Send</button>
+      </footer>
     </div>
-    <div id="ledger-body" class="ledger-body"></div>
-  </aside>
 
-  <footer class="composer">
-    <button id="mic" class="mic-btn" title="Voice input (optional — keyboard works too)">Mic</button>
-    <input id="input" type="text" autocomplete="off"
-           placeholder='Try "anything unusual?" or "set a $300 budget for home"'>
-    <button id="send" class="send-btn">Send</button>
-  </footer>
+    <aside class="side-col">
+      <section class="side-card">
+        <h2>Action loop</h2>
+        <ol class="pipeline" id="pipeline" aria-label="action loop progress">
+          <li data-step="detect"><span class="dot"></span>Detect</li>
+          <li data-step="prove"><span class="dot"></span>Prove</li>
+          <li data-step="propose"><span class="dot"></span>Propose</li>
+          <li data-step="approve"><span class="dot"></span>Approve</li>
+          <li data-step="execute"><span class="dot"></span>Execute</li>
+          <li data-step="receipt"><span class="dot"></span>Receipt</li>
+        </ol>
+        <p class="side-note">Nothing executes without a signed, single-use
+        mandate — every step above is recorded in the ledger.</p>
+      </section>
+
+      <section class="side-card" id="stats" hidden>
+        <h2>This month</h2>
+        <dl class="stat-rows">
+          <div><dt id="stat-month">this month</dt><dd class="stat-value" id="stat-total">—</dd></div>
+          <div><dt>vs last month</dt><dd class="stat-value" id="stat-delta">—</dd></div>
+          <div><dt>Needs attention</dt><dd class="stat-value accent-warn" id="stat-anomalies">—</dd></div>
+          <div><dt>Proven saving / mo <em>(est.)</em></dt><dd class="stat-value accent-ok" id="stat-saving">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="side-card">
+        <h2>Decision ledger</h2>
+        <p class="side-note">Every alert, hold, suppression and refusal — with its reason.</p>
+        <div id="ledger-body" class="ledger-body"></div>
+      </section>
+    </aside>
+  </div>
 </div>
 <script src="/static/app.js"></script>
 </body>

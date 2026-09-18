@@ -105,6 +105,15 @@ surfaces.
 Annotated walkthrough with figures: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 (system diagram, the mandate loop, and the claims-to-evidence map).
 
+## Interface notes
+
+- Icons: [Lucide](https://lucide.dev) (ISC license), inlined as SVG — no
+  icon font, no build step, no npm. The app itself is three static files.
+- Voice input is deliberately not surfaced in the UI: Web Speech API
+  support varies by browser, and a control that only works sometimes is
+  worse than no control. The keyboard is the primary path (the demo
+  video shows voice running in Chrome).
+
 ## Quickstart
 
 Requires Python ≥ 3.11. Zero credentials needed.

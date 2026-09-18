@@ -1,16 +1,17 @@
 /* SpendPilot web experience — simulated Alexa+ interaction model.
- * Voice-first (progressive enhancement), evidence-chain cards, decision ledger,
- * cross-session memory. Keyboard is the primary path. */
+ * Layout: main conversation column + a standing side rail that shows the
+ * action loop (detect -> prove -> propose -> approve -> execute -> receipt),
+ * this month's numbers, and the decision ledger. Keyboard is the primary
+ * path; voice stays out of the UI until it works everywhere.
+ * Icons: Lucide (https://lucide.dev), ISC license. */
 
 const chatEl = document.getElementById("chat");
 const inputEl = document.getElementById("input");
 const sendBtn = document.getElementById("send");
-const micBtn = document.getElementById("mic");
 const newSessionBtn = document.getElementById("new-session");
-const ledgerToggle = document.getElementById("ledger-toggle");
-const ledgerPanel = document.getElementById("ledger-panel");
 const ledgerBody = document.getElementById("ledger-body");
 const statsEl = document.getElementById("stats");
+const pipelineEl = document.getElementById("pipeline");
 
 const SESSION_KEY = "spendpilot.session";
 let sessionId = localStorage.getItem(SESSION_KEY) || null;
@@ -40,28 +41,70 @@ function evidenceHTML(items) {
   ).join("")}</div>`;
 }
 
+/* The side rail's action loop is a read-only visualization of what the
+ * conversation produced (the backend ledger is the source of truth).
+ * Query-type cards (overview, budget, ...) do not move the loop. */
+const PIPELINE_ORDER = ["detect", "prove", "propose", "approve", "execute", "receipt"];
+
+function stepsFor(card) {
+  switch (card.type) {
+    case "anomaly":
+    case "kept":
+      return ["detect"];
+    case "saving":
+      return ["prove", "propose"];
+    case "mandate":
+      return ["approve"];
+    case "receipt":
+      return ["execute", "receipt"];
+    default:
+      return [];
+  }
+}
+
+function updatePipeline(cards) {
+  if (!cards || !pipelineEl) return;
+  let furthest = -1;
+  for (const card of cards) {
+    for (const step of stepsFor(card)) {
+      const i = PIPELINE_ORDER.indexOf(step);
+      const li = pipelineEl.querySelector(`[data-step="${step}"]`);
+      if (li) li.classList.add("reached");
+      if (i > furthest) furthest = i;
+    }
+  }
+  pipelineEl.querySelectorAll("li").forEach((li, i) => {
+    li.classList.toggle("current", i === furthest);
+  });
+}
+
+function resetPipeline() {
+  if (!pipelineEl) return;
+  pipelineEl.querySelectorAll("li").forEach(li => li.classList.remove("reached", "current"));
+}
+
 function cardHTML(card) {
   switch (card.type) {
     case "anomaly":
       return `<div class="card">
-        <span class="badge ${card.severity}">${card.severity}</span>
-        <span class="badge ${card.confidence}">confidence: ${card.confidence}</span>
+        <span class="badge ${card.severity}">${esc(card.severity)}</span>
+        <span class="badge ${card.confidence}">${esc(card.confidence)} confidence</span>
         <h3>${esc(card.title)}</h3>
         ${evidenceHTML(card.evidence)}
         ${card.action_ids && card.action_ids.length
-          ? `<p class="meta" style="margin-top:8px">Proof available — ask me to "prove the saving".</p>` : ""}
+          ? `<p class="meta proof-hint">Proof is ready — ask me to "prove the saving".</p>` : ""}
       </div>`;
     case "kept":
       return `<div class="card">
-        <span class="badge keep">judgment · keep</span>
-        <span class="badge ${card.confidence}">confidence: ${card.confidence}</span>
+        <span class="badge keep">kept on judgment</span>
+        <span class="badge ${card.confidence}">${esc(card.confidence)} confidence</span>
         <h3>${esc(card.title)}</h3>
         ${evidenceHTML(card.evidence)}
         <p class="note">${esc(card.judgment)}</p>
       </div>`;
     case "saving":
       return `<div class="card">
-        <span class="badge conf">confidence · ${card.confidence}</span>
+        <span class="badge conf">${esc(card.confidence)} confidence</span>
         <h3>${esc(card.title)}</h3>
         <div class="saving-flow">
           <span class="before">${money(card.monthly_before)}/mo</span>
@@ -79,7 +122,7 @@ function cardHTML(card) {
       </div>`;
     case "mandate":
       return `<div class="card mandate">
-        <span class="badge ok">signed mandate</span>
+        <span class="badge ok">mandate signed</span>
         <h3>${esc(card.mandate_id)} · ${esc(card.scope.operation)}</h3>
         <ul>
           <li>Scope: ${esc(card.scope.provider)} only — hard cap ${money(card.scope.max_monthly_before)}/mo</li>
@@ -92,7 +135,7 @@ function cardHTML(card) {
       </div>`;
     case "receipt":
       return `<div class="card receipt">
-        <span class="badge ok">executed · receipt</span>
+        <span class="badge ok">executed</span>
         <span class="badge conf">simulated adapter</span>
         <h3>${esc(card.operation)}</h3>
         <div class="saving-flow">
@@ -117,7 +160,7 @@ function cardHTML(card) {
         `<li><b>${esc(r.operation)}</b> via ${esc(r.adapter)} — saved ${money(r.monthly_saving)}/mo
            <span class="meta">(simulated · ${esc(r.executed_at.replace("T", " ").slice(0, 19))} UTC)</span></li>`).join("");
       return `<div class="card">
-        <span class="badge conf">action accountability</span>
+        <span class="badge conf">actions</span>
         <h3>Proposals · mandates · receipts</h3>
         ${props ? `<p class="meta">Proposals</p><ul>${props}</ul>` : ""}
         ${rows ? `<p class="meta">Mandates</p><ul>${rows}</ul>` : ""}
@@ -128,7 +171,7 @@ function cardHTML(card) {
     case "budget": {
       const pct = Math.min(card.used_pct || 0, 100);
       return `<div class="card">
-        <span class="badge ${card.status}">budget · ${card.status}</span>
+        <span class="badge ${card.status}">budget · ${esc(card.status)}</span>
         <h3>${esc(card.category)}</h3>
         <p class="amount">${money(card.spent)} / ${money(card.monthly_limit)}</p>
         <div class="bar ${card.status}"><span style="width:${pct}%"></span></div>
@@ -138,10 +181,10 @@ function cardHTML(card) {
     case "overview": {
       const max = Math.max(...card.providers.map(p => p.amount));
       return `<div class="card">
-        <span class="badge conf">${card.month}</span>
+        <span class="badge conf">${esc(card.month)}</span>
         <h3>Total spend</h3>
         <p class="amount">${money(card.total)}</p>
-        <p class="meta">${card.delta_pct > 0 ? "+" : ""}${card.delta_pct}% vs ${card.prev_month}</p>
+        <p class="meta">${card.delta_pct > 0 ? "+" : ""}${card.delta_pct}% vs ${esc(card.prev_month)}</p>
         <div class="spark">${card.providers.slice(0, 8).map(p =>
           `<span style="height:${Math.max(8, p.amount / max * 100)}%" title="${esc(p.name)} ${money(p.amount)}"></span>`).join("")}
         </div>
@@ -171,7 +214,7 @@ function cardHTML(card) {
       </div>`;
     case "ledger":
       return `<div class="card">
-        <span class="badge conf">accountability</span>
+        <span class="badge conf">decision ledger</span>
         <h3>Decision ledger</h3>
         <ul>${card.entries.map(e =>
           `<li><b>${esc(e.kind)}</b> ${esc(e.subject)} — ${esc(e.reason)}</li>`).join("")}
@@ -196,7 +239,7 @@ function renderStats(stats) {
   if (!stats) return;
   statsEl.hidden = false;
   document.getElementById("stat-total").textContent = money(stats.total);
-  document.getElementById("stat-month").textContent = "this month (" + stats.month + ")";
+  document.getElementById("stat-month").textContent = stats.month;
   document.getElementById("stat-delta").textContent = (stats.delta_pct > 0 ? "+" : "") + stats.delta_pct + "%";
   document.getElementById("stat-anomalies").textContent = stats.anomalies;
   document.getElementById("stat-saving").textContent = money(stats.saving_potential);
@@ -220,7 +263,8 @@ async function send(text) {
   localStorage.setItem(SESSION_KEY, sessionId);
   addMessage("agent", data.reply);
   addCards(data.cards);
-  if (!ledgerPanel.hidden) loadLedger();
+  updatePipeline(data.cards);
+  loadLedger();
 }
 
 async function loadLedger() {
@@ -233,12 +277,6 @@ async function loadLedger() {
      </div>`).join("") || '<p class="why">No decisions recorded yet.</p>';
 }
 
-ledgerToggle.addEventListener("click", () => {
-  ledgerPanel.hidden = !ledgerPanel.hidden;
-  ledgerToggle.classList.toggle("active", !ledgerPanel.hidden);
-  if (!ledgerPanel.hidden) loadLedger();
-});
-
 async function boot() {
   const url = "/api/opening" + (sessionId ? `?session_id=${sessionId}` : "");
   const res = await fetch(url);
@@ -248,6 +286,8 @@ async function boot() {
   renderStats(data.stats);
   addMessage("agent", data.reply);  // the agent speaks first — it does not wait to be asked
   addCards(data.cards);
+  updatePipeline(data.cards);
+  loadLedger();
 }
 
 sendBtn.addEventListener("click", () => send(inputEl.value));
@@ -261,27 +301,8 @@ newSessionBtn.addEventListener("click", () => {
   sessionId = null;
   chatEl.innerHTML = "";
   statsEl.hidden = true;
+  resetPipeline();
   boot();
 });
-
-/* Voice input: progressive enhancement only. Keyboard is the primary path. */
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (SpeechRecognition) {
-  const recog = new SpeechRecognition();
-  recog.lang = "en-US";
-  micBtn.addEventListener("click", () => {
-    micBtn.classList.add("listening");
-    recog.start();
-  });
-  recog.onresult = (e) => {
-    const text = e.results[0][0].transcript;
-    micBtn.classList.remove("listening");
-    send(text);
-  };
-  recog.onerror = () => micBtn.classList.remove("listening");
-  recog.onend = () => micBtn.classList.remove("listening");
-} else {
-  micBtn.style.display = "none";  // graceful degradation
-}
 
 boot();
