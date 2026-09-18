@@ -157,7 +157,7 @@ function cardHTML(card) {
         <ul>${card.providers.map(r => {
           const last = r.points[r.points.length - 1];
           const drift = r.drift && r.drift.mom_pct !== null ? `${r.drift.mom_pct > 0 ? "+" : ""}${r.drift.mom_pct}% MoM` : "n/a";
-          return `<li>${esc(r.provider)} — ${money(last.cost_per_1k_tasks)} /1K tasks (${drift})${r.canary ? " 🚨 canary" : ""}</li>`;
+          return `<li>${esc(r.provider)} — ${money(last.cost_per_1k_tasks)} /1K tasks (${drift})${r.canary ? ' <span class="badge over">canary</span>' : ""}</li>`;
         }).join("")}</ul>
         <p class="note">Total spend is the smoke alarm; cost per task is the canary.</p>
       </div>`;
@@ -166,7 +166,7 @@ function cardHTML(card) {
         <span class="badge conf">recurring</span>
         <h3>Subscriptions</h3>
         <ul>${card.items.map(s =>
-          `<li>${esc(s.name)} — ${money(s.monthly)}/mo${s.flag === "zombie" ? " ⚠️ unused " + s.last_used_days + "d" : ""}</li>`).join("")}
+          `<li>${esc(s.name)} — ${money(s.monthly)}/mo${s.flag === "zombie" ? ' — <span class="badge warn">unused ' + s.last_used_days + "d</span>" : ""}</li>`).join("")}
         </ul>
       </div>`;
     case "ledger":

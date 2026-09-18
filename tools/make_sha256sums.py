@@ -56,10 +56,13 @@ def check_line_endings(files: list[Path]) -> int:
     bad = []
     for rel in files:
         try:
-            if b"\r\n" in (ROOT / rel).read_bytes():
-                bad.append(rel.as_posix())
+            data = (ROOT / rel).read_bytes()
         except OSError:
-            pass
+            continue
+        if b"\x00" in data[:8192]:
+            continue  # binary file (PNG etc.) — line-ending check does not apply
+        if b"\r\n" in data:
+            bad.append(rel.as_posix())
     if bad:
         print("CRLF line endings detected (convert these files to LF):")
         print("\n".join(f"  {f}" for f in bad))

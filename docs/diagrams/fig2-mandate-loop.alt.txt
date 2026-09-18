@@ -1,0 +1,1 @@
+The mandate loop: propose with proof, human approves a signed mandate, five verification gates; pass reaches the adapter and returns a receipt, any failure is refused and logged.

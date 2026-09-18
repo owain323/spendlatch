@@ -1,0 +1,1 @@
+Five claims from the claims matrix, each linked by one reproduction command to its evidence artifact: benchmark metrics, mandate tests, MCP wire probe, MCP Apps resource, and the end-to-end transcript.
