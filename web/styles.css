@@ -19,7 +19,15 @@
   --muted: #57606a;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box; margin: 0; padding: 0;
+  scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #b6b6bd; }
 
 body {
   background: var(--bg);
@@ -78,8 +86,6 @@ body {
 .msg.user { background: #e8edf5; align-self: flex-end; border-bottom-right-radius: 3px; }
 
 .carousel { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 10px; scroll-snap-type: x mandatory; align-self: stretch; }
-.carousel::-webkit-scrollbar { height: 6px; }
-.carousel::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
 
 .card {
   min-width: 300px; max-width: 340px; scroll-snap-align: start;
