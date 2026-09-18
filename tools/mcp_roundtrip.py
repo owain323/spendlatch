@@ -56,11 +56,21 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _wait_ready(port: int, proc: subprocess.Popen, timeout: float = 25.0) -> float:
+def _wait_ready(port: int, proc: subprocess.Popen, err_path: Path,
+                timeout: float = 25.0) -> float:
     start = time.monotonic()
     while time.monotonic() - start < timeout:
         if proc.poll() is not None:
-            raise RuntimeError(f"server exited early with code {proc.returncode}")
+            # The server's stderr goes to a file (never a pipe): a pipe no
+            # one drains fills up and deadlocks a chatty SSE server.
+            tail = ""
+            try:
+                tail = err_path.read_bytes().decode("utf-8", "replace")[-2000:]
+            except OSError:
+                pass
+            raise RuntimeError(
+                f"server exited early with code {proc.returncode}; stderr tail:\n{tail}"
+            )
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=0.5):
                 return time.monotonic() - start
@@ -189,21 +199,23 @@ def main() -> int:
         env = {**os.environ, "SPENDPILOT_PORT": str(port),
                "SPENDPILOT_STATE": str(Path(tmp) / "state.json")}
         log(f"[1/8] spawning server on 127.0.0.1:{port} (isolated state)")
-        proc = subprocess.Popen(
-            [sys.executable, "-m", "mcp_server.server"],
-            cwd=ROOT, env=env,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-        try:
-            ready_in = _wait_ready(port, proc)
-            log(f"      server ready in {ready_in:.1f}s")
-            asyncio.run(_probe(f"http://127.0.0.1:{port}/mcp", log))
-        finally:
-            proc.terminate()
+        err_path = Path(tmp) / "server-stderr.log"
+        with open(err_path, "w+b") as err_file:
+            proc = subprocess.Popen(
+                [sys.executable, "-m", "mcp_server.server"],
+                cwd=ROOT, env=env,
+                stdout=subprocess.DEVNULL, stderr=err_file,
+            )
             try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
+                ready_in = _wait_ready(port, proc, err_path)
+                log(f"      server ready in {ready_in:.1f}s")
+                asyncio.run(_probe(f"http://127.0.0.1:{port}/mcp", log))
+            finally:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
     log("MCP_ROUNDTRIP_OK")
     return 0
 

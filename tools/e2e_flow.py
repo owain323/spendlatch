@@ -34,11 +34,21 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _wait_ready(port: int, proc: subprocess.Popen, timeout: float = 25.0) -> None:
+def _wait_ready(port: int, proc: subprocess.Popen, err_path: Path,
+                timeout: float = 25.0) -> None:
     start = time.monotonic()
     while time.monotonic() - start < timeout:
         if proc.poll() is not None:
-            raise RuntimeError(f"backend exited early with code {proc.returncode}")
+            # Backend stderr goes to a file (never a pipe): an undrained
+            # pipe fills up and deadlocks a chatty server.
+            tail = ""
+            try:
+                tail = err_path.read_bytes().decode("utf-8", "replace")[-2000:]
+            except OSError:
+                pass
+            raise RuntimeError(
+                f"backend exited early with code {proc.returncode}; stderr tail:\n{tail}"
+            )
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=0.5):
                 return
@@ -53,16 +63,18 @@ def main() -> int:
         env = {**os.environ, "SPENDPILOT_STATE": str(Path(tmp) / "state.json"),
                "SPENDPILOT_WEB_PORT": str(port)}
         print(f"# spawning backend on 127.0.0.1:{port} (isolated state)")
-        proc = subprocess.Popen(
-            [sys.executable, "-m", "agent.backend"],
-            cwd=ROOT, env=env,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-        try:
-            _wait_ready(port, proc)
-        except Exception:
-            proc.kill()
-            raise
+        err_path = Path(tmp) / "backend-stderr.log"
+        with open(err_path, "w+b") as err_file:
+            proc = subprocess.Popen(
+                [sys.executable, "-m", "agent.backend"],
+                cwd=ROOT, env=env,
+                stdout=subprocess.DEVNULL, stderr=err_file,
+            )
+            try:
+                _wait_ready(port, proc, err_path)
+            except Exception:
+                proc.kill()
+                raise
         base = f"http://127.0.0.1:{port}"
 
         def post(msg: str, sid: str | None) -> dict:
