@@ -15,11 +15,30 @@ import os
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 from . import actions, tools
 
 MCP_APPS_DIR = Path(__file__).resolve().parent.parent / "web" / "mcp-apps"
 APPROVAL_CARD_URI = "ui://spendpilot/approval-card"
+
+# The server binds to loopback and sits behind a reverse proxy in
+# production, which forwards the original Host (the public domain).
+# Local probes talk to it directly on loopback. Keep DNS-rebinding
+# protection ON with an explicit allowlist covering both faces.
+_TRANSPORT_SECURITY = TransportSecuritySettings(
+    enable_dns_rebinding_protection=True,
+    allowed_hosts=[
+        "spendpilot.owain32380.cn",
+        "127.0.0.1:*",
+        "localhost:*",
+    ],
+    allowed_origins=[
+        "https://spendpilot.owain32380.cn",
+        "http://127.0.0.1:*",
+        "http://localhost:*",
+    ],
+)
 
 mcp = FastMCP(
     "spendpilot",
@@ -33,6 +52,7 @@ mcp = FastMCP(
     ),
     host=os.environ.get("SPENDPILOT_HOST", "127.0.0.1"),
     port=int(os.environ.get("SPENDPILOT_PORT", "8101")),
+    transport_security=_TRANSPORT_SECURITY,
 )
 
 
