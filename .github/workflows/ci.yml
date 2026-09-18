@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package and dev tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      # The same five gates a judge runs locally: pytest (100 tests),
+      # sealed 12-case benchmark, MCP roundtrip over the wire (a real
+      # client against a real server subprocess), whole-repo SHA256
+      # integrity manifest, and the pure-English language scan.
+      - name: Run all quality gates
+        run: python run_checks.py

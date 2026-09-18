@@ -20,6 +20,11 @@ import time
 import urllib.request
 from pathlib import Path
 
+# Local loopback must bypass any system proxy (urllib/httpx honor Windows
+# registry proxies via trust_env; a proxy turns 127.0.0.1 into a 502).
+os.environ["NO_PROXY"] = "127.0.0.1,localhost"
+os.environ["no_proxy"] = "127.0.0.1,localhost"
+
 ROOT = Path(__file__).resolve().parent.parent
 
 

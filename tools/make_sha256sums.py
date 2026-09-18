@@ -8,6 +8,7 @@ Verify:                     python tools/make_sha256sums.py --check
 from __future__ import annotations
 
 import hashlib
+import subprocess
 import sys
 from pathlib import Path
 
@@ -17,6 +18,22 @@ SKIP_FILES = {"SHA256SUMS.txt"}
 
 
 def tracked_files() -> list[Path]:
+    # Prefer git-tracked files: the manifest must match exactly what a fresh
+    # clone (and the CI checkout) contains, not whatever work-in-progress
+    # files happen to sit in the working tree. Fall back to a directory
+    # scan only when git is unavailable (e.g. the repo was copied as files).
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout
+        names = sorted(n for n in out.decode("utf-8").split("\0") if n)
+        if names:
+            return [Path(n) for n in names if Path(n).name not in SKIP_FILES]
+    except (OSError, subprocess.CalledProcessError):
+        pass
     files = []
     for path in sorted(ROOT.rglob("*")):
         if path.is_dir():

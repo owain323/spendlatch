@@ -1,5 +1,7 @@
 # SpendPilot
 
+[![CI](https://github.com/owain323/spendpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/owain323/spendpilot/actions/workflows/ci.yml)
+
 **An agentic spending copilot for households and small teams — it watches your bills across providers, proves what you can save, and with your signed mandate it executes the fix and hands you the receipt. Every decision is recorded.**
 
 > It doesn't wait for you to ask. It proves before it proposes. And it never moves a cent without your signed authorization.

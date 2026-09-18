@@ -32,6 +32,12 @@ import tempfile
 import time
 from pathlib import Path
 
+# The probe must talk to the local server directly, even when the machine has
+# a system proxy configured (httpx/urllib honor Windows registry proxies via
+# trust_env). Without this, a proxy turns 127.0.0.1 into a 502.
+os.environ["NO_PROXY"] = "127.0.0.1,localhost"
+os.environ["no_proxy"] = "127.0.0.1,localhost"
+
 ROOT = Path(__file__).resolve().parent.parent
 EXPECTED_PROTOCOL = "2025-11-25"
 EXPECTED_TOOLS = {
