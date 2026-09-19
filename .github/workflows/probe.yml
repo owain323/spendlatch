@@ -1,0 +1,17 @@
+name: probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe public endpoints
+        run: |
+          echo "=== spendlatch (new) ==="
+          curl -sS --max-time 15 -o /dev/null -w "https=%{http_code}\n" https://spendlatch.owain32380.cn/api/health || echo "spendlatch: UNREACHABLE"
+          echo "=== chronos (existing, cert-backed) ==="
+          curl -sS --max-time 15 -w "\nhttps=%{http_code}\n" https://chronos.owain32380.cn/api/health || echo "chronos: UNREACHABLE"
+          echo "=== cert chain of spendlatch ==="
+          echo | timeout 15 openssl s_client -connect 101.35.254.57:443 -servername spendlatch.owain32380.cn 2>/dev/null | grep -E "subject|issuer|Verify" | head -4
