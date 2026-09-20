@@ -95,7 +95,7 @@ class TestExecute:
         receipt = actions.execute_action(mandate["mandate_id"])
         assert receipt["simulated"] is True
         assert receipt["adapter"] == "aws"
-        assert receipt["monthly_saving"] == 85.14
+        assert receipt["monthly_saving"] == 136.00
         assert receipt["mandate_id"] == mandate["mandate_id"]
         assert receipt["changes"] and receipt["rollback"]
         kinds = [e["kind"] for e in ledger.entries()]

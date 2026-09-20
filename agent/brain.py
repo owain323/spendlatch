@@ -125,6 +125,7 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
             hint = (f" Proposal {open_proposals[0]['proposal_id']} is still waiting for your "
                     "\"approve\"." if open_proposals else
                     " Ask me to \"prove the saving\", then \"approve\" — nothing executes on trust.")
+            ledger.record("refuse", "execute", "no valid mandate - nothing executes on trust")
             return {"reply": "I hold no valid mandate, so I will not act." + hint, "cards": []}
         receipt = actions.execute_action(target["mandate_id"])
         if receipt.get("refused"):

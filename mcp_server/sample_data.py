@@ -155,10 +155,10 @@ SAVING_ACTIONS: dict[str, dict] = {
         "title": "Rightsize the idle EC2 instance",
         "provider": "aws",
         "monthly_before": 181.34,
-        "monthly_after": 96.20,
+        "monthly_after": 45.34,
         "confidence": "high",
         "proof_detail": {
-            "resource": "i-0f3a2 (t3.2xlarge, us-east-1)",
+            "resource": "i-0f3a9c21 (t3.2xlarge, us-east-1)",
             "observations": ["CPU: P50 3.1% / P95 7.4% across 19 consecutive days", "Network I/O flat at ~12 MB/s (no traffic spikes)", "Zero burst-credit consumption in the last 30 days"],
             "assumptions": ["Same workload envelope and schedule after downsizing", "Attached storage and availability requirements unchanged"],
             "pricing_basis": "AWS on-demand pricing, us-east-1, sampled 2026-09-15",
@@ -167,7 +167,7 @@ SAVING_ACTIONS: dict[str, dict] = {
         "proof_steps": [
             "CPU utilization < 5% for 19 consecutive days",
             "No burst pattern in the last 30 days of sample telemetry",
-            "Downsize to t3.large keeps 2x observed peak headroom",
+            "Downsize to t3.large leaves 70% headroom at the observed peak (P95 7.4% x4)",
         ],
     },
     "cancel-figma": {

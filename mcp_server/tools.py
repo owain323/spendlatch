@@ -191,8 +191,8 @@ def analyze_provider(p: dict, months: list[str], latest: str, prev: str | None) 
                             signals.append(_ev(
                                 "cost_per_task",
                                 f"{cost_task_delta:+.0%} across the window "
-                                f"({_round(vals[0] / task_volume[m_first])} -> "
-                                f"{_round(vals[-1] / task_volume[m_last])} per task)",
+                                f"({vals[0] / task_volume[m_first]:.3f} -> "
+                                f"{vals[-1] / task_volume[m_last]:.3f} per task)",
                                 f"{p['id']}.monthly / task_volume"))
                             if abs(cost_task_delta) < 0.10:
                                 strong = True

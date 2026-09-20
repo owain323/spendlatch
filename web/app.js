@@ -418,6 +418,11 @@ async function send(text) {
   addMessage("agent", data.reply);
   speakReply(data.reply);
   addCards(data.cards);
+  // A receipt means the saving is proven now - the sidebar must reflect it.
+  const receiptCard = (data.cards || []).find(c => c.type === "receipt");
+  if (receiptCard && typeof receiptCard.monthly_saving === "number") {
+    document.getElementById("stat-saving").textContent = money(receiptCard.monthly_saving);
+  }
   updatePipeline(data.cards);
   loadLedger();
 }
