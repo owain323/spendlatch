@@ -311,6 +311,42 @@ def _execute_locked(mandate_id: str, state_path: Path | None) -> dict:
             f"cap of ${cap:.2f}/mo — re-approval required",
             state_path, mandate_id=mandate_id)
 
+    # Close the execute-record seam (2026-09-22): an attempt is recorded with
+    # its idempotency key BEFORE the adapter runs. A crash between the adapter
+    # call and the final ledger write then shows up on restart as a started
+    # attempt without its completion - the action may already have happened,
+    # so the mandate is treated as consumed and execution is refused. No
+    # silent double spend.
+    idempotency_key = hashlib.sha256(
+        f"{mandate_id}:{mandate['nonce']}".encode()).hexdigest()[:24]
+    completed_evidence = {
+        item
+        for e in ledger.entries(state_path, kinds={"execute"})
+        for item in (e.get("evidence") or [])
+    }
+    pending_started = any(
+        idempotency_key in (e.get("evidence") or [])
+        and idempotency_key not in completed_evidence
+        for e in ledger.entries(state_path, kinds={"execute_started"})
+    )
+    if pending_started:
+        return _refuse(mandate["scope"]["provider"],
+                       f"a previous execution attempt for {mandate_id} was recorded "
+                       "(execute_started) but never completed — the action may already "
+                       "have happened; the mandate is treated as consumed to prevent "
+                       "a double execution",
+                       state_path, mandate_id=mandate_id)
+    ledger.record("execute_started", mandate["scope"]["provider"],
+                  f"Execution attempt starting for mandate {mandate_id} "
+                  f"(idempotency {idempotency_key})",
+                  evidence=[mandate_id, idempotency_key], path=state_path)
+    # The ledger write just persisted - reload state so the execute_started
+    # entry survives the save_state that follows below (the copy of state this
+    # function is holding predates the record and would overwrite it). The
+    # mandate reference must be re-acquired: it points at the stale copy.
+    state = store.load_state(state_path)
+    mandate = state["mandates"][mandate_id]
+
     receipt = adapters.execute(mandate["action_id"])
     if "error" in receipt:
         return _refuse(mandate["scope"]["provider"], receipt["error"], state_path,
@@ -332,7 +368,7 @@ def _execute_locked(mandate_id: str, state_path: Path | None) -> dict:
         "execute", mandate["scope"]["provider"],
         f"Executed '{receipt['operation']}' via the {receipt['adapter']} adapter (simulated); "
         f"mandate {mandate_id} consumed. Monthly scenario saving ${receipt['monthly_saving']:.2f}.",
-        evidence=[mandate_id, mandate["action_id"]], path=state_path,
+        evidence=[mandate_id, mandate["action_id"], idempotency_key], path=state_path,
     )
     return receipt
 

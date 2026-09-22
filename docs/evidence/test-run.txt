@@ -1,13 +1,13 @@
-# pytest run 2026-09-20T06:14:35Z
+# pytest run 2026-09-22T03:49:26Z
 # generator: tools/refresh_evidence.py (pytest tests -q)
 
-........................................................................ [ 49%]
-........................................................................ [ 98%]
-..                                                                       [100%]
+........................................................................ [ 48%]
+........................................................................ [ 97%]
+...                                                                      [100%]
 ============================== warnings summary ===============================
 ..\..\..\..\..\.workbuddy\binaries\python\envs\default\Lib\site-packages\starlette\testclient.py:53
   C:\Users\czj17751\.workbuddy\binaries\python\envs\default\Lib\site-packages\starlette\testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
     _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-146 passed, 1 warning in 14.21s
+147 passed, 1 warning in 14.89s

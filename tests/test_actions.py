@@ -99,7 +99,7 @@ class TestExecute:
         assert receipt["mandate_id"] == mandate["mandate_id"]
         assert receipt["changes"] and receipt["rollback"]
         kinds = [e["kind"] for e in ledger.entries()]
-        assert kinds == ["propose", "approve", "execute"]
+        assert kinds == ["propose", "approve", "execute_started", "execute"]
 
     def test_execute_without_mandate_refused(self):
         result = actions.execute_action("m-deadbeef")

@@ -1,8 +1,8 @@
-# MCP roundtrip 2026-09-20T06:14:50Z
+# MCP roundtrip 2026-09-22T03:49:42Z
 # generator: tools/refresh_evidence.py (tools/mcp_roundtrip.py, real client over the wire)
 
-[1/8] spawning server on 127.0.0.1:24210 (isolated state)
-      server ready in 0.8s
+[1/8] spawning server on 127.0.0.1:18618 (isolated state)
+      server ready in 1.5s
 [2/8] initialize -> protocolVersion 2025-11-25
 [3/8] tools/list -> 13 tools; propose_action links ui://spendlatch/approval-card
 [4/8] tools/call -> read-only surface answers with valid structured content
