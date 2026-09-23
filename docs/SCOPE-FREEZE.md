@@ -36,7 +36,7 @@ Tool surface (13 MCP tools; the original freeze listed 9 - six were added during
 
 ## Revision 1 (2026-09-18, security hardening — approved deviation)
 
-External security review found that approval was not bound to any
+A security review found that approval was not bound to any
 authenticated caller (any MCP client could self-report approver="human").
 The following changes deviate from the frozen surface and are SECURITY
 FIXES, not scope creep:
