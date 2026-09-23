@@ -5,8 +5,7 @@ ACP / x402 all converge on the same shape): an agent that touches money must
 carry PROOF OF HUMAN AUTHORIZATION, bounded in scope and time, and leave an
 audit trail.
 
-Authorization model (hardened 2026-09-18 — the previous build let any MCP
-caller self-report approver="human", which proved nothing):
+Authorization model:
 
   propose  -> the agent attaches its proof to a concrete, bounded action and
               mints an approval challenge bound to that proposal

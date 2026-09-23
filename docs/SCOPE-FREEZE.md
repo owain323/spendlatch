@@ -34,12 +34,12 @@ Tool surface (13 MCP tools; the original freeze listed 9 - six were added during
 
 ---
 
-## Revision 1 (2026-09-18, security hardening — approved deviation)
+## Revision 1 (2026-09-18, security hardening)
 
-A security review found that approval was not bound to any
-authenticated caller (any MCP client could self-report approver="human").
-The following changes deviate from the frozen surface and are SECURITY
-FIXES, not scope creep:
+Approval is bound to an authenticated caller: a caller must present a
+server-minted session token (a self-reported approver="human" proves
+nothing). The following changes deviate from the frozen surface and are
+SECURITY FIXES, not scope creep:
 
 - `approve_action` now requires an authenticated web session token; the
   MCP surface refuses approval and logs the refusal. The `approver`
