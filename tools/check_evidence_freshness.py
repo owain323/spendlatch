@@ -36,6 +36,18 @@ DETERMINISTIC = {
     "docs/evidence/independent-metrics.json",
 }
 
+# Artifacts that can only be produced with credentials the gate does not hold
+# (a real AWS call, billed to an account). A timestamp rule would report them
+# stale forever, because CI can never regenerate them. They are verified by
+# re-running their generator by hand — tools/aws_smoke.py — and the artifact
+# itself carries the timestamp and latency of that run. This is a different
+# reason than DETERMINISTIC (bytes are not reproducible, merely unreproducible
+# here), so they are kept apart: a reader should be able to see WHY an
+# artifact escapes the clock.
+CREDENTIALED = {
+    "docs/evidence/aws-live.txt",
+}
+
 # evidence artifact -> code paths whose change invalidates it. Scoped to the
 # code that actually produces the artifact: benchmark metrics depend on the
 # analysis function and the datasets, not on unrelated mcp_server modules.
@@ -48,6 +60,9 @@ SOURCES = {
     "docs/evidence/mcp-roundtrip.txt": ["tools/mcp_roundtrip.py", "mcp_server"],
     "docs/evidence/mcp-handshake.txt": ["mcp_server/server.py"],
     "docs/evidence/e2e-flow.txt": ["tools/e2e_flow.py", "agent", "mcp_server", "web"],
+    # Timestamp-exempt, but the mapping is still recorded: it says which code
+    # would invalidate the artifact if a human re-runs the generator.
+    "docs/evidence/aws-live.txt": ["tools/aws_smoke.py", "mcp_server/planner.py"],
 }
 
 
@@ -62,7 +77,7 @@ def last_commit_ts(path: str) -> int | None:
 def main() -> int:
     stale = []
     for evidence, sources in SOURCES.items():
-        if evidence in DETERMINISTIC:
+        if evidence in DETERMINISTIC or evidence in CREDENTIALED:
             # Verified by re-running the generator, not by the clock.
             continue
         ev_ts = last_commit_ts(evidence)
@@ -82,9 +97,10 @@ def main() -> int:
         print("EVIDENCE FRESHNESS GATE FAILED:")
         print("\n".join(f"  {s}" for s in stale))
         return 1
-    checked = len(SOURCES) - len(DETERMINISTIC)
+    checked = len(SOURCES) - len(DETERMINISTIC) - len(CREDENTIALED)
     print(f"evidence freshness gate: OK ({checked} timestamp-checked, "
-          f"{len(DETERMINISTIC)} content-verified)")
+          f"{len(DETERMINISTIC)} content-verified, "
+          f"{len(CREDENTIALED)} credential-gated)")
     return 0
 
 

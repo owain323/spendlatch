@@ -21,11 +21,27 @@ The authorization boundary between an AI agent and a consequential action.
 
 ### Inspiration
 
-I kept asking AI assistants to do things for me — move money, buy things, run cloud jobs. And every time, the same uncomfortable question came back: what exactly is this agent allowed to spend? Dashboards can show me what already happened. That is not the same as deciding what is allowed to happen. So I built the thing that was missing: a small, verifiable boundary that sits between an AI agent and any action that costs money.
+**You are giving an AI permission to spend your money.** That sentence is easy to say and surprisingly hard to make true.
+
+I kept asking AI assistants to do things for me — move money, buy things, run cloud jobs. And every time, the same uncomfortable question came back: what exactly is this agent allowed to spend? Dashboards can show me what already happened. That is not the same as deciding what is allowed to happen. So I built the thing that was missing: a small, verifiable boundary that sits between an AI agent and any action that costs money. You let it decide for you; you did not hand it an unlimited amount of your money.
 
 ### What it does
 
 SpendLatch is the authorization boundary between an AI agent and a consequential action. The agent watches spending data, proves a saving opportunity with evidence, and proposes an exact action — then stops. Nothing runs until a human approves a signed mandate: this exact action, on this provider, capped at this dollar amount, once, for fifteen minutes. If the request no longer matches the signed proof, it is rejected. Replaying the mandate fails — the nonce is single-use. Asking the agent to approve itself through MCP is refused and logged. Every approval exports a proof bundle that can be verified offline, without trusting the running system.
+
+### The boundary, stated as seven invariants
+
+"We take this seriously" is not checkable. This is:
+
+1. **Approval and execution are different surfaces.** The MCP tool surface cannot approve its own proposals — it is refused and logged.
+2. **No mandate, no motion.** An action without a valid mandate is refused, never queued.
+3. **A mandate is single-use**, and single-use is not bookkeeping: it lives outside the bounded ledger, so log trimming or a status rewind cannot re-arm a spent mandate.
+4. **An issued mandate is immutable.** Raise the cap after approval and the signature breaks — it becomes an unsigned mandate, not a bigger one.
+5. **Approval expires** in fifteen minutes, a server constant no caller can set.
+6. **The evidence you approved is the evidence that runs.** Proof, cap, and adapter-registry drift are each refused separately.
+7. **Front-end visibility is never an authorization primitive.** Hide or disable any control and the server refuses exactly the same way — and records it either way.
+
+Every one of these has a test that fails when the guard behind it is deleted, and `tools/mutation_check.py` proves that by deleting them.
 
 ### How we built it
 
@@ -98,14 +114,60 @@ Every refusal is a first-class ledger entry ("refuse"), so "why did you not act"
 **Q5. Give an example of the end-to-end user flow.**
 The agent asks the server for anomalies, gets evidence, tries to execute without a mandate, and is refused with "I hold no valid mandate, so I will not act" — the refusal is recorded in the ledger as a first-class entry. The human approves on the web surface; only then does the same MCP execution path succeed, once.
 
+### [TOOL] = MCP Python SDK (`mcp>=1.12,<2`)
+
+**Q1. How does the user invoke this tool?**
+It is imported and called at runtime by the MCP server entry point, which
+builds a `FastMCP` instance and serves it over Streamable HTTP at
+`https://spendlatch.owain32380.cn/mcp`. Not a README mention — the package is
+imported and the server is booted from it.
+
+**Q2. How does the user provide input to this tool?**
+Python decorators plus typed signatures: each of the 13 tools declares its own argument types, and the SDK derives the schema and validates the call. `propose_action` additionally carries MCP Apps metadata (`_meta.ui.resourceUri`) pointing at the approval card.
+
+**Q3. How does the tool communicate results back to the user?**
+Structured content per tool call, plus structured errors on the refusal paths — a refusal is a typed response with a reason and a ledger sequence number, not an exception with a traceback.
+
+**Q4. How does the user provide feedback on the response?**
+The wire probe (`tools/mcp_roundtrip.py`) is the feedback channel we actually use: eight assertions over a real client against a real server subprocess, run inside both pytest and CI.
+
+**Q5. Give an example of the end-to-end user flow.**
+Client calls `initialize` → protocol 2025-11-25 negotiated → `tools/list` returns 13 tools → `tools/call` on the read-only surface returns valid structured content → `set_budget` then `budget_status` agree over the wire → an `approve_action` call carrying no session credential is refused, and that refusal appears in `decision_ledger`.
+
+### [TOOL] = FastAPI
+
+**Q1. How does the user invoke this tool?**
+`agent/backend.py` is a FastAPI application serving the web surface: `/` returns the page, `/static/*` the assets, and `/api/*` the chat, session, ledger and health endpoints.
+
+**Q2. How does the user provide input to this tool?**
+`POST /api/chat` with a message plus the browser session's identifier and token; a request model validates the shape.
+
+**Q3. How does the tool communicate results back to the user?**
+A `ChatResponse` carrying the reply text plus zero or more structured cards (anomaly, saving, proposal, mandate, receipt, denial), each rendered by the front end.
+
+**Q4. How does the user provide feedback on the response?**
+`GET /api/ledger` and `GET /api/ledger/verify` let the user audit every decision, including every refusal, and check the hash chain themselves.
+
+**Q5. Give an example of the end-to-end user flow.**
+Browser posts a session → posts a message → receives cards → the mandate card is signed by the same session → `GET /api/ledger/verify` confirms the chain covers the refusal produced when the same mandate was replayed.
+
 ---
 
 ## 4. Why these tracks
 
 ```
-Alexa+ Developer Track: agentic voice workflows need a spending boundary more than any other surface — a voice agent that can move money without a human-signed cap is the exact failure mode SpendLatch removes. The MCP surface is already built to the 2025-11-25 protocol with Streamable HTTP; the human approval surface is live. The remaining work is wiring the two together inside the Alexa+ skill flow, which is what the track credits would fund.
+Alexa+ Developer Track: agentic voice workflows need a spending boundary more than any other surface — a voice agent that can move money without a human-approved cap is the exact failure mode SpendLatch removes. The MCP surface is already built to the 2025-11-25 protocol with Streamable HTTP; the human approval surface is live. The remaining work is wiring the two together inside the Alexa+ skill flow, which is what the track credits would fund.
 
 Open Source mini challenge: the whole boundary — policy gate, ledger, adapters, verifier — is MIT-licensed and reproducible from https://github.com/owain323/spendlatch. Anyone can clone, run, break, and verify it.
+
+**Open Source mini challenge — required fields**
+
+- **Project repository URL:** https://github.com/owain323/spendlatch
+- **Contribution URL:** https://github.com/owain323/spendlatch (new repository, created 2026-09-18 — inside the hackathon window)
+- **GitHub username:** `owain323`
+- **What we did:** Built and published a new open-source project: the authorization boundary between an AI agent and a consequential action. A deterministic policy gate parses every request into a spend intent and decides; a hash-chained ledger records every decision including every refusal; a mandate (HMAC-SHA256, single-use, scope-capped, 15-minute expiry) is the only thing that unlocks execution; an offline verifier re-checks an exported proof bundle against seven consistency checks. Thirteen tools are exposed over MCP 2025-11-25 / Streamable HTTP, with an MCP Apps approval card served as a `ui://` resource.
+- **How it works:** `python run_checks.py` runs the whole thing — 188 pytest tests (186 in the pytest step plus 2 wire round-trip tests), a sealed three-tier benchmark 12/12, an MCP wire probe 8/8, and a mutation check that kills 12 of 12 guards, a real MCP client round trip against a real server subprocess, an integrity manifest, an evidence-freshness check, and a mutation check that disables each of ten guards one at a time and requires the suite to go red. A judge can reproduce every claim in the README in about five minutes with zero credentials.
+- **Why it matters:** Agentic-payment protocols (AP2, ACP, x402) all converged on the same shape — an agent that touches money must carry proof of human authorization, bounded in scope and time, with an audit trail. That shape is infrastructure, not product surface, and it is currently rebuilt from scratch by everyone who needs it. Publishing it under MIT means the next team can adopt the boundary instead of reinventing it — and, more useful still, attack it: the refusal paths are the part worth stealing, and they only earn trust by being broken at publicly.
 ```
 
 ---

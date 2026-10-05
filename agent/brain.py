@@ -40,6 +40,30 @@ def mentioned_providers(text: str) -> list[str]:
     return seen
 
 
+def refusal_card(*, action: str, reason: str, mandate_id: str | None = None,
+                 ledger_seq=None, policy: str | None = None,
+                 scope: str | None = None, agent: str = "mandate-verifier") -> dict:
+    """One structured refusal shape, shared by every way a mandate can fail.
+
+    A refusal that only exists as a sentence cannot be collected, cannot be
+    filtered, and cannot form a refusal wall — so replay, expiry, cap drift,
+    forgery and self-approval all land here, on the same "denied" card type
+    the new-spend policy gate already renders. No new card type is introduced:
+    the count stays at 12 types + the proposal state.
+    """
+    return {
+        "type": "denied",
+        "agent": agent,
+        "action": action,
+        "mandate_id": mandate_id,
+        "scope": scope,
+        "policy": policy,
+        "reasons": [reason],
+        "ledger_seq": ledger_seq,
+        "evidence": f"ledger #{ledger_seq}" if ledger_seq is not None else None,
+    }
+
+
 def handle(message: str, session_id: str, session_token: str | None = None) -> dict:
     """Route one user message to tools and shape the reply + cards payload.
 
@@ -128,7 +152,12 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
             hint = (" Reload the page to re-authenticate your session, then approve again."
                     if "authenticated" in mandate["error"] else "")
             return {"reply": f"I refused: {mandate['error']} (logged as ledger "
-                             f"#{mandate['ledger_seq']}).{hint}", "cards": []}
+                             f"#{mandate['ledger_seq']}).{hint}",
+                    "cards": [refusal_card(
+                        action=f"approve {target['proposal_id']}",
+                        reason=mandate["error"],
+                        ledger_seq=mandate["ledger_seq"],
+                        policy="approval requires an authenticated web session")]}
         return {
             "reply": (
                 f"Approved. I issued signed mandate {mandate['mandate_id']} — single-use, "
@@ -147,8 +176,26 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
         if id_match:
             target = next((m for m in issued if m["mandate_id"] == id_match.group(1)), None)
             if target is None:
-                return {"reply": f"No executable mandate {id_match.group(1)} — it may be "
-                                 "consumed or expired. Ask for 'mandate status'.", "cards": []}
+                # Naming a mandate that is no longer executable is exactly the
+                # replay case, and it must be recorded like any other refusal:
+                # claiming "every refusal is logged" while silently discarding
+                # this one would make the claim false.
+                seq = ledger.record(
+                    "refuse", id_match.group(1),
+                    "named mandate is not in the issued state — consumed or expired; "
+                    "execution refused",
+                    evidence=[text[:80]])["seq"]
+                return {
+                    "reply": f"No executable mandate {id_match.group(1)} — it may be "
+                             f"consumed or expired (logged as ledger #{seq}). "
+                             "Ask for 'mandate status'.",
+                    "cards": [refusal_card(
+                        action=f"execute {id_match.group(1)}",
+                        reason="this mandate is not in the issued state — it was already "
+                               "consumed, or it expired",
+                        mandate_id=id_match.group(1),
+                        ledger_seq=seq,
+                        policy="mandate verification — single-use and expiry")]}
         elif issued:
             target = issued[0]
         else:
@@ -157,11 +204,23 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
                     "\"approve\"." if open_proposals else
                     " Ask me to \"prove the saving\", then \"approve\" — nothing executes on trust.")
             ledger.record("refuse", "execute", "no valid mandate - nothing executes on trust")
-            return {"reply": "I hold no valid mandate, so I will not act." + hint, "cards": []}
+            seq = ledger.entries(kinds={"refuse"})[-1]["seq"]
+            return {"reply": "I hold no valid mandate, so I will not act." + hint,
+                    "cards": [refusal_card(
+                        action="execute",
+                        reason="no mandate is in force — nothing executes on trust",
+                        ledger_seq=seq,
+                        policy="no mandate, no motion")]}
         receipt = actions.execute_action(target["mandate_id"])
         if receipt.get("refused"):
             return {"reply": f"Refused — {receipt['error']} (ledger #{receipt['ledger_seq']}).",
-                    "cards": []}
+                    "cards": [refusal_card(
+                        action=f"execute {target['mandate_id']}",
+                        reason=receipt["error"],
+                        mandate_id=target["mandate_id"],
+                        ledger_seq=receipt["ledger_seq"],
+                        scope=target["scope"]["operation"],
+                        policy="mandate verification — single-use, expiry, cap and proof")]}
         return {
             "reply": (
                 f"Done. {receipt['operation']} ran through the {receipt['adapter']} adapter "

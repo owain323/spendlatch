@@ -21,7 +21,9 @@ regenerate: `python tools/make_diagrams.py`
 ### EXPERIENCE lane
 
 - **Web experience** (`web/` + `agent/backend.py`) — the simulated Alexa+
-  surface: voice-first chat (progressive enhancement, keyboard primary),
+  surface: chat with voice as progressive enhancement (keyboard is the
+  primary path today; voice input needs `SpeechRecognition`, reply speech is
+  an off-by-default toggle),
   evidence-chain cards, mandate and receipt cards, decision-ledger panel.
   Talks to the agent over `HTTPS /api/chat`.
 - **MCP Apps hosts** (Claude · ChatGPT · Goose) — external hosts render our

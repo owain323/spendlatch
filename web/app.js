@@ -224,28 +224,39 @@ function cardHTML(card) {
       /* The approval artifact's dark twin: when policy DENIES, the refusal
        * gets the same case-file treatment — who asked, what for, which
        * policy limit, and where the refusal is logged. */
+      /* One card type carries every refusal: new-spend policy denials AND
+       * mandate refusals (replayed, expired, over cap, forged, self-approved).
+       * A refusal that cannot enter the refusal
+       * wall is not a demonstrated boundary, so the two paths share this
+       * structure instead of one of them degrading into a sentence. */
+      const isMandate = Boolean(card.mandate_id);
       return `<div class="card denied">
         <div class="denied-head">DECISION: DENIED</div>
-        <h3>${esc(card.merchant)} — ${money(card.amount)} ${esc(card.currency)}</h3>
+        <h3>${isMandate
+          ? `Mandate ${esc(card.mandate_id)} — not executed`
+          : `${esc(card.merchant)} — ${money(card.amount)} ${esc(card.currency)}`}</h3>
         <div class="kv">
           <div><span>Agent</span><b>${esc(card.agent)}</b></div>
           <div><span>Action</span><b>${esc(card.action)}</b></div>
-          <div><span>Merchant</span><b>${esc(card.merchant)}</b></div>
-          <div><span>Amount</span><b>${money(card.amount)} ${esc(card.currency)}</b></div>
+          ${isMandate ? `<div><span>Mandate</span><b>${esc(card.mandate_id)}</b></div>` : ""}
+          ${card.merchant ? `<div><span>Merchant</span><b>${esc(card.merchant)}</b></div>` : ""}
+          ${card.amount ? `<div><span>Amount</span><b>${money(card.amount)} ${esc(card.currency)}</b></div>` : ""}
           ${card.scope ? `<div><span>Scope</span><b>${esc(card.scope)}</b></div>` : ""}
-          <div><span>Category</span><b>${esc(card.category)}</b></div>
+          ${card.category ? `<div><span>Category</span><b>${esc(card.category)}</b></div>` : ""}
         </div>
         <div class="auth-block denied-block">
           <div class="auth-title">POLICY</div>
           <div class="kv">
-            <div><span>Policy limit</span><b>${esc(card.policy_limit)}</b></div>
+            ${card.policy_limit ? `<div><span>Policy limit</span><b>${esc(card.policy_limit)}</b></div>` : ""}
+            ${card.policy ? `<div><span>Policy</span><b>${esc(card.policy)}</b></div>` : ""}
             <div><span>Logged</span><b>refusal #${esc(card.ledger_seq)}</b></div>
           </div>
           ${(card.reasons || []).map(r => `<div class="deny-line">${esc(r)}</div>`).join("")}
-          <p class="meta mono">evidence: ${esc(card.evidence)}</p>
+          ${card.evidence ? `<p class="meta mono">evidence: ${esc(card.evidence)}</p>` : ""}
         </div>
-        <p class="note">The planner understood the request; policy said no, and the
-        refusal is in the ledger. Nothing was proposed, signed, or executed.</p>
+        <p class="note">${isMandate
+          ? "The mandate did not verify, so nothing ran — and the refusal is in the ledger."
+          : "The planner understood the request; policy said no, and the refusal is in the ledger. Nothing was proposed, signed, or executed."}</p>
       </div>`;
     case "receipt":
       return `<div class="card receipt">
@@ -506,8 +517,9 @@ function closeAudit() {
 /* ---- voice: speak to the agent, hear it answer --------------------------
  * Progressive enhancement via the Web Speech API: the mic button only
  * appears where SpeechRecognition exists, and TTS is a toggle. No
- * dependency, no cloud SDK - the "simulated Alexa+ experience" gets its
- * voice-first interaction shape from the platform itself. */
+ * dependency, no cloud SDK. Honest label: this is voice-ENABLED, not
+ * voice-FIRST -- keyboard remains the primary path until the mic is
+ * promoted in the UX work tracked for the Alexa+ simulated experience. */
 
 const ttsBtn = document.getElementById("tts");
 let ttsOn = false;

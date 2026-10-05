@@ -1,4 +1,4 @@
-178
+188
 
 Collected by tools/check_test_count.py: pytest --collect-only over
 tests/ with no exclusions. This is the only test count the docs may

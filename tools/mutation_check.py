@@ -57,6 +57,7 @@ MUTATIONS: list[tuple[str, str, str, str, list[str]]] = [
         [
             "tests/test_boundaries.py::test_rollback_of_status_does_not_allow_a_second_execution",
             "tests/test_boundaries.py::test_consumption_survives_ledger_trimming",
+            "tests/test_authorization_invariants.py::test_the_identical_request_twice_produces_one_receipt",
         ],
     ),
     (
@@ -78,14 +79,16 @@ MUTATIONS: list[tuple[str, str, str, str, list[str]]] = [
         "mcp_server/actions.py",
         r"    if not hmac\.compare_digest\(_sign\(payload, secret\), mandate\[\"signature\"\]\):",
         "    if False:",
-        ["tests/test_actions.py::TestForgery"],
+        ["tests/test_actions.py::TestForgery",
+         "tests/test_authorization_invariants.py::test_raising_the_cap_after_approval_does_not_take_effect"],
     ),
     (
         "expiry-check",
         "mcp_server/actions.py",
         r'    if _now\(\) > datetime\.fromisoformat\(mandate\["expires_at"\]\):',
         "    if False:",
-        ["tests/test_actions.py::TestExpiry"],
+        ["tests/test_actions.py::TestExpiry",
+         "tests/test_authorization_invariants.py::test_a_truly_expired_mandate_is_refused"],
     ),
     (
         "proof-drift-check",
@@ -101,7 +104,28 @@ MUTATIONS: list[tuple[str, str, str, str, list[str]]] = [
         "mcp_server/actions.py",
         r"    if not store\.token_is_authenticated\(session_token\):",
         "    if False:",
-        ["tests/test_actions.py::TestAuthorizationBoundary::test_mcp_surface_tool_refuses_and_cannot_be_given_a_token"],
+        ["tests/test_actions.py::TestAuthorizationBoundary::test_mcp_surface_tool_refuses_and_cannot_be_given_a_token",
+         "tests/test_authorization_invariants.py::test_approving_without_a_session_is_denied_and_logged",
+         "tests/test_authorization_invariants.py::test_a_client_asserted_approval_string_does_not_authorize"],
+    ),
+    (
+        # Without the process lock, ten concurrent callers all reach
+        # the verifier before the first one has written its claim.
+        "execute-serialization",
+        "mcp_server/actions.py",
+        r"    with _EXECUTE_LOCK:\n        return _execute_locked\(mandate_id, state_path\)",
+        "    return _execute_locked(mandate_id, state_path)",
+        ["tests/test_authorization_invariants.py::test_ten_concurrent_executes_produce_exactly_one_receipt",
+         "tests/test_actions.py::TestAuthorizationBoundary::test_single_use_holds_under_concurrency"],
+    ),
+    (
+        # Authority binding: collapsing every session into one workspace
+        # lets B execute a mandate that A minted.
+        "workspace-isolation",
+        "mcp_server/store.py",
+        r'    record = _auth_map\(\)\.get\(_token_hash\(token\)\)\n    return record\["workspace"] if record else _ANONYMOUS_WORKSPACE',
+        "    return _ANONYMOUS_WORKSPACE",
+        ["tests/test_authorization_invariants.py::test_a_mandate_is_not_reachable_from_another_session"],
     ),
 ]
 

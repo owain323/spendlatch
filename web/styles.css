@@ -51,6 +51,14 @@ body {
 .brand h1 { font-size: 17px; letter-spacing: -0.2px; }
 .tagline { color: var(--muted); font-size: 12px; }
 
+/* Submission-path marker: quiet enough not to compete with the product,
+   explicit enough that nobody reads this as a real Alexa+ integration. */
+.sim-badge {
+  display: inline-block; margin-top: 4px; padding: 2px 8px;
+  font-size: 11px; letter-spacing: 0.02em; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; background: var(--panel);
+}
+
 .ghost-btn {
   background: var(--panel); border: 1px solid var(--line); color: var(--muted);
   border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px;
