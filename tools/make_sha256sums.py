@@ -13,7 +13,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SKIP_DIRS = {".git", ".venv", "__pycache__", "data", ".pytest_cache", ".mypy_cache", "results"}
+# NOTE: "results" is deliberately NOT here. benchmarks/results/*.json are
+# tracked and therefore in the manifest; skipping them in this fallback made
+# verification impossible on any copy-deployed box (where git ls-files is
+# unavailable), which is exactly where the manifest matters most.
+SKIP_DIRS = {".git", ".venv", "__pycache__", "data", ".pytest_cache", ".mypy_cache"}
 SKIP_FILES = {"SHA256SUMS.txt"}
 
 
