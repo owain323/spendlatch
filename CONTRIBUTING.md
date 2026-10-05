@@ -106,10 +106,10 @@ less than one that says where it stops.
 | Gate | Decides by | Verified against | Cannot catch |
 |---|---|---|---|
 | compile check | Python syntax | — | syntax in non-Python files |
-| pytest | the suite passes | 188 tests | whether a test proves anything |
+| pytest | the suite passes | 191 tests | whether a test proves anything |
 | mutation check | disabling a guard turns the suite red | 10 guards | nothing in principle — this is the strongest gate here |
 | evidence freshness | commit order; recomputation for derived artifacts | 7 artifacts | whether the evidence's content is true |
-| test count | one measured number, compared to every doc | 188 | whether the number means anything |
+| test count | one measured number, compared to every doc | 191 | whether the number means anything |
 | submission copy | tool-ish tokens, edit distance, sentence context | 7 planted failures | prose that names nothing checkable |
 
 The honest summary: these gates prove that the documentation matches the
