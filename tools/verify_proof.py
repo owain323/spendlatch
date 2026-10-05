@@ -83,12 +83,18 @@ def verify_proof(bundle_path: str, state_path: str | None = None) -> int:
     receipt = bundle.get("execution_receipt")
     binding = False
     if receipt and mandate:
+        # Find THIS mandate's receipt, not the newest one: an audit bundle must
+        # keep verifying after later actions execute, otherwise the archive
+        # expires the moment the system is used again.
+        matching = [r for r in state["receipts"] if r.get("mandate_id") == mandate_id]
+        this_receipt = matching[-1] if matching else None
         binding = (receipt.get("mandate_id") == mandate_id
                    and receipt.get("idempotency_key")
                    and receipt.get("execution_id")
                    and receipt.get("request_id") == mandate.get("proposal_id")
                    and mandate["status"] == "executed"
-                   and state["receipts"][-1].get("execution_id") == receipt["execution_id"])
+                   and this_receipt is not None
+                   and this_receipt.get("execution_id") == receipt["execution_id"])
     checks.append(_check("execution binding", binding))
 
     ledger_ok = True

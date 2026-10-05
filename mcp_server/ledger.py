@@ -87,6 +87,13 @@ def verify_chain(path: Path | None = None) -> dict:
 
 
 def entries(path: Path | None = None, kinds: set[str] | None = None) -> list[dict]:
+    """Entries in append order (oldest first).
+
+    The retained window is bounded by MAX_ENTRIES: the hash chain proves
+    nothing inside the window was altered, and a truncated tail is a known
+    limit rather than a silent one. Guards that must never expire (spent
+    mandates) therefore do not live here.
+    """
     ledger = store.load_state(path)["ledger"]
     if kinds:
         ledger = [e for e in ledger if e["kind"] in kinds]

@@ -56,6 +56,19 @@ python tools/verify_proof.py proof.json --state data/workspaces/<ws>.json
 
 ## Known limitations (stated, not hidden)
 
+### L2 — the hash chain proves integrity inside the retained window only
+
+`verify_chain` walks the entries it still holds. If the tail is removed
+outright, the remaining chain still verifies, because there is nothing left
+to contradict. Two consequences, both deliberate:
+
+- The chain is an **integrity** property, not an **availability** one: it
+  answers "was anything here altered?", not "is everything still here?".
+- Anything that must never expire therefore does not live in the ledger.
+  A spent mandate is claimed in `state["consumed"]`, which is never
+  trimmed; the ledger records the decision but is not the guard.
+
+
 ### L1 — the approval boundary is a capability boundary, not an identity boundary
 
 `POST /api/session` issues a session token to any caller that reaches the

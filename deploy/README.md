@@ -12,8 +12,11 @@ single Linux VPS. The live deployment is
   deployments that do not use Caddy (see below).
 
 Both processes bind to loopback only; the reverse proxy is the only
-public face. No credentials exist anywhere in the stack: every provider
-is a simulated adapter and all data is synthetic.
+public face. **No provider credentials exist anywhere in the stack**:
+every provider is a simulated adapter and all billing data is synthetic.
+The web surface does issue browser session tokens, and those are stored
+as hashes in the state file — see L1 in docs/THREAT-MODEL.md for what
+that does and does not prove.
 
 ## Ports
 
