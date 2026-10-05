@@ -39,6 +39,15 @@
         <button class="chip" data-say="execute">Execute</button>
         <button class="chip" data-say="why didn't you tell me?">What did you hold back?</button>
       </nav>
+      <nav class="chips" aria-label="try to break the boundary">
+        <!-- Each button walks a pre-generated fixture through the real
+             verifier; the refusal it shows is computed, not staged. -->
+        <button class="chip attack" data-attack="replay">Attack: replay</button>
+        <button class="chip attack" data-attack="self-approve">Attack: self-approve</button>
+        <button class="chip attack" data-attack="over-cap">Attack: over-cap</button>
+        <button class="chip attack" data-attack="expired">Attack: expired</button>
+        <button class="chip attack" data-attack="forged-scope">Attack: forged scope</button>
+      </nav>
 
       <main id="chat" class="chat" aria-live="polite"></main>
 

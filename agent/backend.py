@@ -27,7 +27,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from mcp_server import actions, crossfoot, ledger, store, tools
+from mcp_server import actions, attacks, crossfoot, ledger, store, tools
 
 from . import brain
 
@@ -154,6 +154,56 @@ def verify_ledger(session_token: str | None = None) -> dict:
 @app.get("/api/unit-economics")
 def get_unit_economics() -> dict:
     return tools.unit_economics()
+
+
+@app.post("/api/attack/{kind}")
+def run_attack(kind: str, req: ChatRequest) -> dict:
+    """Walk one attack through the REAL verifier and return its verdict.
+
+    The five attacks are pre-generated fixtures (see mcp_server/attacks.py),
+    but every refusal is computed by the same guard production uses and is
+    recorded in the same ledger. If a guard ever stops holding, this endpoint
+    says the attack succeeded - a demo that cannot fail open is a demo that
+    cannot tell the truth.
+    """
+    reply: str
+    cards: list[dict]
+    with _STATE_LOCK:
+        store.set_workspace(store.workspace_for_token(req.session_token))
+        try:
+            result = attacks.run_attack(kind)
+        finally:
+            store.set_workspace(None)
+    if "error" in result:
+        reply = f"Unknown attack '{kind}'. Known: {', '.join(result['known'])}."
+        cards = []
+    elif result["refused"]:
+        reply = (f"Attack '{result['attack']}' was refused by the "
+                 f"{result['reason'].split(':')[0].strip().lower()} guard "
+                 f"(ledger #{result['ledger_seq']}). Nothing ran.")
+        cards = [brain.refusal_card(
+            action=f"attack:{result['attack']}",
+            reason=result["reason"],
+            mandate_id=result.get("mandate_id"),
+            ledger_seq=result["ledger_seq"],
+            policy=ATTACK_POLICY[result["attack"]],
+            agent="attack-verifier")]
+    else:
+        reply = (f"WARNING: attack '{result['attack']}' was NOT refused - "
+                 "a boundary did not hold. This is a broken guard, not a demo.")
+        cards = []
+    return {"attack": kind, "refused": result.get("refused", False),
+            "reason": result.get("reason"), "ledger_seq": result.get("ledger_seq"),
+            "reply": reply, "cards": cards}
+
+
+ATTACK_POLICY = {
+    "replay": "single-use: a mandate executes at most once",
+    "self-approve": "approval requires an authenticated web session",
+    "over-cap": "the signed cap is a hard limit",
+    "expired": "approval expires",
+    "forged-scope": "the signature covers the signed operation",
+}
 
 
 @app.get("/api/health")

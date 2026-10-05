@@ -385,3 +385,8 @@ input.listening-input::placeholder { color: var(--accent); }
   .composer { position: sticky; bottom: 0; background: var(--panel); }
   .side-col { border-top: 1px solid var(--line); }
 }
+
+/* Attack buttons: same family as the other chips, visibly "probe" flavored,
+   so nobody mistakes them for product actions. */
+.chip.attack { border-style: dashed; color: var(--muted); }
+.chip.attack:hover { color: var(--ink); border-color: var(--muted); }

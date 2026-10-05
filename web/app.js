@@ -661,8 +661,20 @@ async function boot() {
 sendBtn.addEventListener("click", () => send(inputEl.value));
 inputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") send(inputEl.value); });
 
-document.querySelectorAll(".chip").forEach(chip =>
+document.querySelectorAll(".chip[data-say]").forEach(chip =>
   chip.addEventListener("click", () => send(chip.dataset.say)));
+
+async function runAttack(kind) {
+  addMessage("user", "Try to break it: " + kind);
+  const data = await post(`/api/attack/${kind}`, { message: "attack", session_id: sessionId });
+  addMessage("agent", data.reply);
+  speakReply(data.reply);
+  addCards(data.cards);
+  loadLedger();
+}
+
+document.querySelectorAll(".chip[data-attack]").forEach(chip =>
+  chip.addEventListener("click", () => runAttack(chip.dataset.attack)));
 
 newSessionBtn.addEventListener("click", () => {
   localStorage.removeItem(SESSION_KEY);

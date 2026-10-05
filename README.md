@@ -156,12 +156,12 @@ semantics** — not "exactly once external spending".
 - **MCP Apps native** — `propose_action` links an interactive approval card
   (`ui://spendlatch/approval-card`, `text/html;profile=mcp-app`) that hosts
   render inline; the same HTML speaks the postMessage JSON-RPC bridge.
-- **The MCP server is the product** — 13 typed tools, 191 pytest tests, a sealed
+- **The MCP server is the product** — 13 typed tools, 197 pytest tests, a sealed
   benchmark; not a thin wrapper around an existing API.
 
   *The four numbers, stated so they cannot be confused:*
-  **191** pytest tests collected — of which the gate's pytest step runs
-  **189** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
+  **197** pytest tests collected — of which the gate's pytest step runs
+  **195** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
   separate MCP step, because they spawn a real server subprocess.
   On top of that: **12/12** sealed benchmark cases, **8/8** MCP wire-probe
   steps, and **12/12** mutation guards killed. Those three are not pytest
@@ -249,7 +249,7 @@ Judges: see [docs/JUDGE-REPRODUCTION.md](docs/JUDGE-REPRODUCTION.md) for the
 
 | Claim | Evidence |
 |---|---|
-| 191 automated tests pass — 189 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
+| 197 automated tests pass — 195 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
 | Detection, three honestly-labeled tiers: public regression 12/12; independent hand-written suite 14/14 (boundary values, split verdicts, cross-rule interactions); derived invariance suite 24/24 (mechanical transformations of the public fixtures — proves invariance, NOT generalization) | `benchmarks/results/metrics.json`, `benchmarks/results/independent-metrics.json`, `benchmarks/results/derived-metrics.json` |
 | Real MCP client roundtrip: protocol 2025-11-25, 13/13 tools, action loop + ui:// resource over the wire | `docs/evidence/mcp-roundtrip.txt` |
 | End-to-end web flow (9 criteria, incl. mandate replay refusal) | `docs/evidence/e2e-flow.txt` |
