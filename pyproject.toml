@@ -1,7 +1,7 @@
 [project]
 name = "spendlatch"
 version = "0.3.0"
-description = "Agentic spend-remediation copilot for AI and cloud teams: mandate-gated MCP server + simulated Alexa+ web experience"
+description = "The authorization boundary between an AI agent and a consequential action: mandate-gated MCP server + simulated Alexa+ web experience"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }

@@ -15,7 +15,9 @@ providers are simulated; no credentials exist anywhere.
 | Verified | against our own Alexa+ integration round-trip probe (tools/mcp_roundtrip.py) |
 | Upgrade path | 2026-07-28 revision (MCPServer rename, stateless model) planned post-hackathon - the legacy negotiation path is a safety valve, not a permanent home |
 
-**An agentic spend-remediation copilot for AI and cloud teams — it watches your bills across providers, proves the next move before proposing it, and executes only inside a mandate signed by an authenticated human session. Every decision, including every refusal, is recorded.**
+**The authorization boundary between an AI agent and a consequential action.**
+
+An agentic spend-remediation copilot for AI and cloud teams — it watches your bills across providers, proves the next move before proposing it, and executes only inside a mandate signed by a human session. Every decision, including every refusal, is recorded.
 
 > It doesn't wait for you to ask. It proves before it proposes. And it never moves a cent without your signed authorization.
 
@@ -48,14 +50,21 @@ detect -> prove -> propose -> [human approves] -> signed mandate -> execute -> r
 
 - **propose** — the agent attaches its proof to a concrete, bounded action
   (one provider, one operation, a dollar cap).
-- **approve** — authorization is bound to an authenticated web session:
-  the browser mints a session token, and ONLY a request carrying it can
-  approve. The MCP surface refuses approval by design (an unauthenticated
-  caller self-reporting "approver=human" proves nothing), and the refusal
-  is logged. The mandate — HMAC-SHA256, single-use, scope-capped,
-  15-minute expiry — records the approving session fingerprint and the
-  proof hash of exactly what was approved. This is a local stand-in for
-  Alexa+ account linking / AP2 verifiable credentials.
+- **approve** — approval lives on a separate surface from execution. The
+  browser mints a session token, and ONLY a request carrying it can approve;
+  the MCP surface refuses approval by design (a caller self-reporting
+  "approver=human" proves nothing), and the refusal is logged. The mandate —
+  HMAC-SHA256, single-use, scope-capped, 15-minute expiry — records the
+  approving session fingerprint and the proof hash of exactly what was
+  approved. **What this is today:** a *capability* boundary (which surface may
+  approve), not an *identity* boundary — the demo's session endpoint issues
+  tokens without credential verification, so anyone who can reach the web
+  surface can open a session and approve. **What it becomes with a real
+  identity provider:** the same mandate, signed by an Alexa+ account-linked
+  session (OAuth 2.1 + PKCE) or an AP2 verifiable credential, with the
+  session token bound to a verified principal. The mandate format, the
+  single-use nonce, the scope cap and the ledger are unchanged by that
+  upgrade — only the proof of *who* approved becomes non-repudiable.
 - **execute** — the provider adapter runs ONLY if the mandate verifies:
   signature, expiry, single-use under concurrency (process lock), proof
   hash still matching the approved evidence, and scope drift (if reality

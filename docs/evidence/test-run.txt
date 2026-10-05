@@ -1,4 +1,4 @@
-# pytest run 2026-09-22T03:49:26Z
+# pytest run 2026-10-05T13:12:24Z
 # generator: tools/refresh_evidence.py (pytest tests -q)
 
 ........................................................................ [ 48%]
@@ -10,4 +10,4 @@
     _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-147 passed, 1 warning in 14.89s
+147 passed, 1 warning in 15.92s
