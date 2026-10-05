@@ -77,6 +77,33 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
         }
 
     # --- approve: human authorization issues a signed mandate ---------------
+    # Consent is read off the sentence, so a refusal must never route here.
+    # "I do NOT approve", "should I approve?" and "never approve without
+    # asking" all contain the keyword; signing on any of them would hand the
+    # agent the one thing this product exists to withhold.
+    _D = r"(?:do(?:es)?\s+not|don'?t|never|no[tn]e?)\s+"
+    # A trailing "? if ..." is a question ("what happens if I approve?"), not consent.
+    _is_question = text.strip().endswith("?")
+    if re.search(_D + r"approve|without\s+(?:my\s+)?(?:asking|approval|permission)|"
+                 r"do\s+not\s+approve|should\s+i\s+approve|can\s+i\s+approve|"
+                 r"\bstop\b|\bhalt\b|\bcancel\b", text, re.IGNORECASE) or _is_question:
+        open_now = [p for p in actions.mandate_status()["proposals"]
+                    if p["status"] == "proposed"]
+        seq = ledger.record(
+            "refuse", "approve",
+            "consent check: the request reads as a refusal or a question, not an approval",
+            evidence=[text[:80]], path=None)
+        if open_now:
+            return {"reply": (
+                    f"I did not sign anything — that reads as a refusal or a question, not an "
+                    f"approval, and I only sign on an explicit yes. Still open: "
+                    f"{open_now[0]['proposal_id']} ({open_now[0].get('title', 'proposal')}). "
+                    f"If you want it, say \"approve {open_now[0]['proposal_id']}\". "
+                    f"Logged as ledger #{seq['seq']}."),
+                    "cards": []}
+        return {"reply": ("I did not sign anything — nothing is open, and that reads as a "
+                          f"refusal rather than an approval. Logged as ledger #{seq['seq']}."),
+                "cards": []}
     if any(k in text for k in ("approve", "authorized", "go ahead", "yes, do")):
         status = actions.mandate_status()
         open_proposals = [p for p in status["proposals"] if p["status"] == "proposed"]
@@ -267,6 +294,45 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
             ),
             "cards": [{"type": "overview", **overview}],
         }
+
+    # --- new spend: default-deny, deterministically -------------------------
+    # The LLM planner can parse a spend request into a richer intent, but it is
+    # OFF by default. When it is off, a request to spend money must still be
+    # refused rather than silently ignored: a spend verb plus an amount is
+    # enough to reach the deterministic gate, and the denial is logged.
+    _spend = re.search(
+        r"\b(buy|purchase|order|recharge|top\s*-?\s*up|upgrade|renew|provision|"
+        r"pay\s+for|charge)\b", text, re.IGNORECASE)
+    _amt = re.search(r"(?:\$\s*([\d,]+(?:\.\d+)?)|([\d,]+(?:\.\d+)?)\s*(?:usd|dollars?))",
+                     text, re.IGNORECASE)
+    if _spend and _amt and not planner.enabled():
+        raw = (_amt.group(1) or _amt.group(2) or "").replace(",", "")
+        try:
+            amount = float(raw)
+        except ValueError:
+            amount = 0.0
+        if amount > 0:
+            intent = {"merchant": (mentioned[0] if mentioned else None),
+                      "amount": amount, "currency": "USD", "category": "other",
+                      "source": "deterministic"}
+            verdict = actions.evaluate_spend_intent(intent)
+            card = {
+                "type": "denied",
+                "agent": "policy-gate",
+                "action": "new spend",
+                "merchant": intent["merchant"] or "unresolved merchant",
+                "amount": amount,
+                "currency": "USD",
+                "reasons": verdict.get("reasons", []),
+                "ledger_seq": verdict.get("ledger_seq"),
+            }
+            return {
+                "reply": (f"Denied. Spending new money is outside what I am allowed to do: I only "
+                          f"act on proven cost reductions that carry a signed mandate. "
+                          f"{verdict['reasons'][0].capitalize()}. Logged as ledger "
+                          f"#{verdict['ledger_seq']}."),
+                "cards": [card],
+            }
 
     if mentioned:
         # A bare provider mention is a question about that provider - answer

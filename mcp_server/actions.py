@@ -310,31 +310,50 @@ def _execute_locked(mandate_id: str, state_path: Path | None) -> dict:
             f"cap of ${cap:.2f}/mo — re-approval required",
             state_path, mandate_id=mandate_id)
 
-    # Close the execute-record seam (2026-09-22): an attempt is recorded with
-    # its idempotency key BEFORE the adapter runs. A crash between the adapter
-    # call and the final ledger write then shows up on restart as a started
-    # attempt without its completion - the action may already have happened,
-    # so the mandate is treated as consumed and execution is refused. No
-    # silent double spend.
+    # The signed scope must be what actually runs. The cap alone is not the
+    # scope: a mandate signed for one operation must not execute another.
+    # Compare against the adapter that execute() would actually dispatch to,
+    # not just the static operation table - swapping the registry entry is
+    # exactly the attack this closes.
+    entry = adapters.ADAPTERS.get(mandate["action_id"])
+    if entry is None:
+        return _refuse(mandate["scope"]["provider"],
+                       f"no adapter for action '{mandate['action_id']}' — execution refused",
+                       state_path, mandate_id=mandate_id)
+    adapter_name = entry[0]
+    operation = adapters.OPERATIONS.get(mandate["action_id"])
+    if adapter_name != mandate["scope"]["provider"] or operation != mandate["scope"]["operation"]:
+        return _refuse(
+            mandate["scope"]["provider"],
+            f"scope drifted: the action now resolves to {adapter_name}:{operation}, but the "
+            f"mandate was signed for {mandate['scope']['provider']}:{mandate['scope']['operation']} "
+            "— the adapter registry changed since approval; execution refused",
+            state_path, mandate_id=mandate_id)
+
+    # Close the execute-record seam: claim the mandate BEFORE the adapter
+    # runs. A crash between the adapter call and the ledger write then finds
+    # the claim on restart - the action may already have happened, so the
+    # mandate is treated as spent and execution is refused. The claim lives in
+    # state["consumed"], not in the ledger: the ledger is a bounded audit
+    # window, and a single-use guard that evaporates under log pressure is
+    # not a guard.
     idempotency_key = hashlib.sha256(
         f"{mandate_id}:{mandate['nonce']}".encode()).hexdigest()[:24]
-    completed_evidence = {
-        item
-        for e in ledger.entries(state_path, kinds={"execute"})
-        for item in (e.get("evidence") or [])
-    }
-    pending_started = any(
-        idempotency_key in (e.get("evidence") or [])
-        and idempotency_key not in completed_evidence
-        for e in ledger.entries(state_path, kinds={"execute_started"})
-    )
-    if pending_started:
+    claim = state["consumed"].get(mandate_id)
+    if claim:
         return _refuse(mandate["scope"]["provider"],
-                       f"a previous execution attempt for {mandate_id} was recorded "
-                       "(execute_started) but never completed — the action may already "
-                       "have happened; the mandate is treated as consumed to prevent "
-                       "a double execution",
+                       f"mandate {mandate_id} was already spent on execution "
+                       f"{claim.get('execution_id', 'unknown')} at "
+                       f"{claim.get('at', 'an earlier run')} — mandates are "
+                       "single-use, whatever the ledger window still holds",
                        state_path, mandate_id=mandate_id)
+    state["consumed"][mandate_id] = {
+        "execution_id": None,
+        "idempotency_key": idempotency_key,
+        "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "phase": "claimed",
+    }
+    store.save_state(state, state_path)
     ledger.record("execute_started", mandate["scope"]["provider"],
                   f"Execution attempt starting for mandate {mandate_id} "
                   f"(idempotency {idempotency_key})",
@@ -348,6 +367,10 @@ def _execute_locked(mandate_id: str, state_path: Path | None) -> dict:
 
     receipt = adapters.execute(mandate["action_id"])
     if "error" in receipt:
+        # The adapter refused: release the claim so a genuine failure is not
+        # indistinguishable from a spent mandate, and say so in the ledger.
+        state["consumed"].pop(mandate_id, None)
+        store.save_state(state, state_path)
         return _refuse(mandate["scope"]["provider"], receipt["error"], state_path,
                        mandate_id=mandate_id)
 
@@ -359,8 +382,15 @@ def _execute_locked(mandate_id: str, state_path: Path | None) -> dict:
     # id and a deterministic idempotency key derived from the mandate nonce.
     receipt["request_id"] = mandate["proposal_id"]
     receipt["execution_id"] = f"e-{secrets.token_hex(4)}"
-    receipt["idempotency_key"] = hashlib.sha256(
-        f"{mandate_id}:{mandate['nonce']}".encode()).hexdigest()[:24]
+    receipt["idempotency_key"] = idempotency_key
+    # Settle the claim: the execution now has an id, so a crash from here on
+    # names what happened instead of leaving an open "claimed" record.
+    state["consumed"][mandate_id] = {
+        "execution_id": receipt["execution_id"],
+        "idempotency_key": idempotency_key,
+        "at": receipt["executed_at"],
+        "phase": "executed",
+    }
     state["receipts"].append(receipt)
     store.save_state(state, state_path)
     ledger.record(

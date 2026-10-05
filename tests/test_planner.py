@@ -97,8 +97,19 @@ class TestFeatureFlag:
         def forbidden(text, llm_fn=None):
             raise AssertionError("planner must not run while the flag is off")
         monkeypatch.setattr(planner, "plan", forbidden)
-        out = brain.handle("buy 200 dollars of API credits", session_id="s1")
-        assert "cards" in out and not any(c.get("type") == "denied" for c in out["cards"])
+        out = brain.handle("buy 200 dollars of API credits for the eval pipeline",
+                           session_id="s1")
+        # With the flag off the deterministic gate must still refuse the spend
+        # request: no model call, and no silent fall-through to a chat reply
+        # either. The refusal is logged and no mandate can result.
+        cards = out.get("cards") or []
+        assert any(c.get("type") == "denied" for c in cards), (
+            "a new-spend request was not denied while the planner was off"
+        )
+        assert cards[0].get("agent") == "policy-gate"
+        assert cards[0].get("ledger_seq")
+        counts = actions.mandate_status()["counts"]
+        assert counts == {"proposals_open": 0, "mandates_issued": 0, "executed": 0}
 
 
 class TestSpendIntentPolicy:

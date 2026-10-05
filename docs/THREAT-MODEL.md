@@ -26,11 +26,14 @@ real money movement.
 | T2 | Prompt injection rewrites the intended action | Canonical spend intent: the proof the human approves is hashed into the mandate; evidence drift rejects execution | `proof_hash` in `SIGNED_FIELDS`; `test_proof_drift_since_approval_refused` |
 | T3 | Tampered spend request | Canonical digest of the material facts signed at approval time; any change breaks the hash | same mechanism as T2 |
 | T4 | Forged/modified mandate | HMAC-SHA256 over exactly the signed fields; bookkeeping fields live outside the signature | `test_forged_mandate_refused` |
-| T5 | Replay of a valid mandate | Single-use under a process lock + nonce + idempotency key on the receipt | `test_single_use_holds_under_concurrency` |
+| T5 | Replay of a valid mandate | A per-mandate **consumption claim** written before the adapter runs (`state["consumed"]`, outside the bounded ledger) + nonce + idempotency key on the receipt. The process lock is in-process only; the claim is what holds across processes and restarts | `test_single_use_holds_under_concurrency`, `test_seam.py`, `test_attack_surface.py::test_rollback_of_status_does_not_allow_a_second_execution` |
 | T6 | Stale authorization after policy/time change | TTL is server policy (900s, not caller-supplied); expired mandates refuse and log | `test_expired_mandate_refused` |
 | T7 | Untrusted surface claims "a human approved" | Surface isolation: only the web session surface can approve; the MCP surface refuses and logs. This stops an agent that speaks MCP — it does not stop a caller that speaks HTTP (see L1) | `test_mcp_surface_cannot_approve` |
 | T8 | Duplicate execution after timeout/retry | Transaction identity: every receipt carries request_id / execution_id / idempotency_key derived from mandate+nonce | `test_receipt_carries_transaction_identity` |
 | T9 | Tampered decision history | Hash-chained ledger: every entry commits to content and predecessor | `TestHashChain` |
+| T11 | Human says "no" and the agent signs anyway | Consent is read off the sentence: a refusal-shaped or interrogative request never reaches the approve path, and the refusal itself is a ledger entry | `test_attack_surface.py::test_refusal_shaped_utterance_never_signs` |
+| T12 | A valid mandate executes a different operation | The signed scope is compared against the adapter that would actually run (registry entry + operation table) before dispatch; a swapped adapter refuses and names the difference | `test_attack_surface.py::test_swapped_adapter_cannot_run_under_a_valid_signature` |
+| T13 | New spend requested with no mandate at all | Default-deny gate reachable without the LLM: a spend verb plus an amount is denied and logged, so the refusal is recorded even when the planner is off | `test_attack_surface.py::test_new_spend_is_denied_and_logged` |
 | T10 | Silent state corruption | Fail-closed persistence: corrupt file preserved, never silently reset | `test_corrupt_state_fails_closed_and_preserves_file` |
 
 ## integrity vs authenticity — stated precisely

@@ -23,9 +23,18 @@ def _now() -> str:
 
 
 def _base(action: dict, adapter: str, operation: str) -> dict:
+    # The reported operation is the registry value for this action, never the
+    # literal passed in: a receipt must not be able to name an operation the
+    # signed scope never authorized.
+    registered = OPERATIONS.get(action["id"], operation)
+    if operation and registered != operation:
+        raise ValueError(
+            f"adapter body for {action['id']!r} declares {operation!r} but the "
+            f"registry says {registered!r}"
+        )
     return {
         "adapter": adapter,
-        "operation": operation,
+        "operation": registered,
         "simulated": True,  # never removed in this repo; production adapters replace the body
         "action_id": action["id"],
         "provider": action["provider"],

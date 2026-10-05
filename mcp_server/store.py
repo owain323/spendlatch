@@ -38,6 +38,11 @@ DEFAULT_STATE: dict = {
     "challenges": [],       # human overrules, fed back as context
     "proposals": {},        # proposal_id -> bounded action awaiting approval
     "mandates": {},         # mandate_id -> signed, scoped, expiring authorization
+    "consumed": {},         # mandate_id -> {execution_id, at, idempotency_key}
+                           # Single-use ground truth. Kept OUT of the ledger on
+                           # purpose: the ledger is a bounded audit window, so a
+                           # guard that lived there would evaporate under log
+                           # pressure and let a spent mandate run again.
     "receipts": [],         # execution receipts (adapter reports)
     "mandate_secret": None, # per-installation HMAC key, generated on first approval
 }
