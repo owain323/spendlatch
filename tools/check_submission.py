@@ -111,13 +111,17 @@ def main() -> int:
             continue
         # Neither net can see a name invented from nothing: it is not a
         # near-miss of a real tool and carries no tool-ish token. Context
-        # catches it instead — a quoted identifier in a sentence that talks
-        # about calling or listing tools has to be one.
+        # catches it instead — an identifier in a sentence that talks about
+        # calling or listing tools has to be one.
+        #
+        # Matched on word boundaries, not on backticks. The copy names its
+        # tools in running prose, and a rule that only fired inside `code
+        # spans` would have sat here looking thorough while never firing.
         for sentence in re.split(r"(?<=[.!?])\s+", text):
             if not re.search(r"\b(tool|call|calls|listed|lists|expose[sd]?|endpoint)\b",
                              sentence, re.IGNORECASE):
                 continue
-            if f"`{name}`" in sentence:
+            if re.search(rf"\b{re.escape(name)}\b", sentence):
                 problems.append(
                     f"names {name} in a sentence about tools, but no such tool is registered"
                 )

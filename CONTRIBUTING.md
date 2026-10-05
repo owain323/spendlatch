@@ -79,6 +79,37 @@ grep -c "the_anchor_you_injected" <the file>   # confirms it landed
 anchor, and reports it as unproven rather than as a kill. Keep that
 behaviour if you extend the mutation list.
 
+**3b. Judge each mutation on its own.** Injecting four failures at once and
+seeing the gate go red proves that *at least one* of the four was caught.
+It says nothing about the other three, and the number of problems in the
+output is the only thing that tells them apart. Two of us read "the gate
+failed" as "the gate caught all four" — in each case the output named two
+of the four and the other two had never been exercised.
+
+So: inject one, run, read the output, restore. Then the next. A mutation
+you did not watch fail is not evidence about that mutation.
+
+---
+
+## What these gates do not catch
+
+Written down because a check that claims to cover everything is worth
+less than one that says where it stops.
+
+| Gate | Decides by | Verified against | Cannot catch |
+|---|---|---|---|
+| compile check | Python syntax | — | syntax in non-Python files |
+| pytest | the suite passes | 178 tests | whether a test proves anything |
+| mutation check | disabling a guard turns the suite red | 10 guards | nothing in principle — this is the strongest gate here |
+| evidence freshness | commit order; recomputation for derived artifacts | 7 artifacts | whether the evidence's content is true |
+| test count | one measured number, compared to every doc | 178 | whether the number means anything |
+| submission copy | tool-ish tokens, edit distance, sentence context | 7 planted failures | prose that names nothing checkable |
+
+The honest summary: these gates prove that the documentation matches the
+code and that the guards are enforced. They do not prove the guards are
+the right guards, that the tests are the right tests, or that the product
+solves a problem worth solving.
+
 **4. A gate that rewrites a file can delete half of it.** The test-count gate
 regenerated its own file with the number alone and silently removed the
 notes explaining why two different counts are both correct. Files a tool
