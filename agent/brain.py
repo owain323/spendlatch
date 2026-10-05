@@ -31,6 +31,12 @@ PROVIDER_ALIASES = {
 }
 
 
+def plural(n: int, word: str) -> str:
+    """Copy helper: 1 -> 'thing', 0 or 2 -> 'things'. The UI is prose,
+    not a log line - no 'issue(s)' in front of a judge."""
+    return f"{word}s" if n != 1 else word
+
+
 def mentioned_providers(text: str) -> list[str]:
     """Distinct provider ids mentioned in the message, in order of appearance."""
     seen = []
@@ -79,9 +85,9 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
         trail = tools.decision_ledger()
         held = [e for e in trail["entries"] if e["kind"] in ("hold", "suppress")]
         reply = ("Here is every decision I made, including the ones where I stayed quiet: "
-                 f"{len(held)} thing(s) I deliberately did NOT bother you with. "
+                 f"{len(held)} {plural(len(held), 'thing')} I deliberately did NOT bother you with. "
                  "The full trail - with the tamper-evidence check - lives in the "
-                 "Decision ledger panel on the right.")
+                 "Decision ledger panel.")
         return {"reply": reply, "cards": []}
 
     # --- human challenge (overrule flows back as context) ------------------
@@ -253,7 +259,7 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
         return {
             "reply": (
                 f"Done. {receipt['operation']} ran through the {receipt['adapter']} adapter "
-                f"(simulated), mandated by {receipt['mandate_id']}. Scenario saving: "
+                f"(simulated), under mandate {receipt['mandate_id']}. Scenario saving: "
                 f"{_fmt_money(receipt['monthly_saving'])}/mo. The receipt is in the ledger."
             ),
             "cards": [{"type": "receipt", **receipt}],
@@ -263,9 +269,9 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
     if any(k in text for k in ("receipt", "what did you do", "mandate", "what have you done")):
         status = actions.mandate_status()
         c = status["counts"]
-        reply = (f"Action trail: {c['proposals_open']} proposal(s) awaiting approval, "
-                 f"{c['mandates_issued']} mandate(s) issued and unused, "
-                 f"{c['executed']} execution(s) completed.")
+        reply = (f"Action trail: {c['proposals_open']} {plural(c['proposals_open'], 'proposal')} "
+                 f"awaiting approval, {c['mandates_issued']} {plural(c['mandates_issued'], 'mandate')} "
+                 f"issued and unused, {c['executed']} {plural(c['executed'], 'execution')} completed.")
         if not any(c.values()):
             reply = "No actions yet. The loop is: prove -> approve -> execute -> receipt."
         return {"reply": reply, "cards": [{"type": "mandates", **status}]}
@@ -279,7 +285,7 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
                      f"{result['bills_checked']} bills, both rules pass. "
                      "Quantity times unit cost equals each line, and the lines sum to each bill.")
         else:
-            reply = (f"Reconciliation FAILED on {len(result['failures'])} check(s) - "
+            reply = (f"Reconciliation FAILED on {len(result['failures'])} {plural(len(result['failures']), 'check')} - "
                      f"details: {result['failures'][:2]}.")
         return {"reply": reply, "cards": [{"type": "crossfoot", **result}]}
 
@@ -322,7 +328,7 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
         zombies = [s for s in subs if s["flag"] == "zombie"]
         reply = f"You have {len(subs)} recurring subscriptions."
         if zombies:
-            reply += f" {len(zombies)} look(s) unused — worth a decision."
+            reply += f" {len(zombies)} {plural(len(zombies), 'look')} unused — worth a decision."
         return {"reply": reply, "cards": [{"type": "subscriptions", "items": subs}]}
 
     # --- proof ---------------------------------------------------------------
@@ -372,7 +378,7 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
         cards += [{"type": "kept", **k} for k in findings["kept"]]
         reply = f"Here is what needs your attention for {findings['month']}:"
         if findings["held"]:
-            reply += f" ({len(findings['held'])} low-confidence item(s) held back — ask me why.)"
+            reply += f" ({len(findings['held'])} low-confidence {plural(len(findings['held']), 'item')} held back — ask me why.)"
         return {"reply": reply, "cards": cards}
 
     # --- overview --------------------------------------------------------------

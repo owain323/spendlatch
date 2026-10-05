@@ -1,13 +1,13 @@
-# pytest run 2026-10-05T19:12:50Z
+# pytest run 2026-10-05T19:44:18Z
 # generator: tools/refresh_evidence.py (pytest tests -q)
 
 ........................................................................ [ 36%]
-........................................................................ [ 73%]
-.....................................................                    [100%]
+........................................................................ [ 72%]
+.......................................................                  [100%]
 ============================== warnings summary ===============================
 ..\..\..\..\..\.workbuddy\binaries\python\versions\3.13.12\Lib\site-packages\fastapi\testclient.py:1
   C:\Users\czj17751\.workbuddy\binaries\python\versions\3.13.12\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
     from starlette.testclient import TestClient as TestClient  # noqa
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-197 passed, 1 warning in 24.01s
+199 passed, 1 warning in 26.04s

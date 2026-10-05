@@ -134,7 +134,7 @@ def analyze_provider(p: dict, months: list[str], latest: str, prev: str | None) 
         return {
             "id": f"ineligible-{p['id']}", "provider": p["name"], "verdict": "hold",
             "eligible": False,
-            "reason": f"Only {len(history)} month(s) of history — not enough to judge responsibly.",
+            "reason": f"Only {len(history)} {'month' if len(history) == 1 else 'months'} of history — not enough to judge responsibly.",
             "evidence": [_ev("history_depth", f"{len(history)} months", f"{p['id']}.monthly")],
         }
 
@@ -418,11 +418,11 @@ def proactive_briefing(state_path: Path | None = None) -> dict:
     total_saving = _round(sum(p.get("monthly_saving", 0.0) for p in previews))
     held_count = len(findings["held"])
     headline = (
-        f"I found {len(findings['anomalies'])} issue(s) worth your attention this month. "
+        f"I found {len(findings['anomalies'])} {'issue' if len(findings['anomalies']) == 1 else 'issues'} worth your attention this month. "
         f"Proven saving potential: ${total_saving:.2f}/mo (scenario estimates)."
     )
     if held_count:
-        headline += f" I also held back {held_count} low-confidence finding(s) — ask me why."
+        headline += f" I also held back {held_count} low-confidence {'finding' if held_count == 1 else 'findings'} — ask me why."
     return {
         "overview": overview,
         "anomalies": findings["anomalies"],

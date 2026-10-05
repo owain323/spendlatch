@@ -163,7 +163,7 @@ function cardHTML(card) {
       </div>`;
     case "kept":
       return `<div class="card">
-        <span class="badge keep">kept on judgment</span>
+        <span class="badge keep">held for judgment</span>
         <span class="badge ${card.confidence}">${esc(card.confidence)} confidence</span>
         <h3>${esc(card.title)}</h3>
         ${evidenceHTML(card.evidence)}
