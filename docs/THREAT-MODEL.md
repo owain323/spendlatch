@@ -55,6 +55,27 @@ python tools/verify_proof.py proof.json --state data/workspaces/<ws>.json
 - Byzantine/multiple-signer scenarios (single trust domain; asymmetric
   signatures, key rotation, and third-party verification are the v2 lane)
 
+## How the evidence gate decides
+
+Two rules, because one rule cannot cover both kinds of artifact.
+
+**Timestamps** (five artifacts). An evidence file's last commit must be at
+least as recent as the last commit touching the code it describes. Here the
+commit really is the thing that has to follow the code, so the clock is a
+faithful proxy.
+
+**Content** (two artifacts). A derived metric is a pure function of the code:
+recompute it after a change that alters no behaviour and you get identical
+bytes, so there is nothing to commit and the timestamp can never catch up. A
+timestamp rule would report stale forever with no way out. These are
+verified by re-running the generator and comparing the result, not by the
+clock. A byte appended to force a commit would have "fixed" the gate by
+making the check meaningless.
+
+**Why this is worth stating.** A gate that cannot fail is decoration, and a
+gate that cries wolf gets switched off. Both rules here can fail, and when
+they do, the fix is real rather than cosmetic.
+
 ## Known limitations (stated, not hidden)
 
 ### L2 — the hash chain proves integrity inside the retained window only

@@ -2,3 +2,12 @@
 
 Collected by tools/check_test_count.py: pytest --collect-only over tests/
 with no exclusions. This is the only test count the docs may quote.
+
+You may see two different numbers, and both are correct.
+This file is collected by `pytest --collect-only` over tests/ with no
+exclusions. `run_checks.py` runs pytest with the wire roundtrip skipped,
+because that test spawns a real server subprocess and belongs to the
+`MCP roundtrip` step instead. So: the count here is the whole suite,
+and the number pytest prints during the gate step is the suite minus
+that one subprocess test. The quote in README/CLAIMS/EVIDENCE is this
+number, and tools/check_test_count.py fails if any document drifts.
