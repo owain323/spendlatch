@@ -4,6 +4,14 @@
  * Radius system: 4 (badges) / 6 (controls) / 8 (cards) / 10 (bubbles). */
 
 :root {
+  /* Motion tokens - values are the ones the E-drive design library's
+     07-motion charter fixes; duplicated here because the web demo is a
+     zero-build surface that cannot import the library. If the values
+     ever change there, they change here too. */
+  --dur-fast: 120ms; --dur-base: 180ms; --dur-slow: 280ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --bg: #f7f7f5;
   --panel: #ffffff;
   --rail: #fbfbfa;
@@ -62,7 +70,7 @@ body {
 .ghost-btn {
   background: var(--panel); border: 1px solid var(--line); color: var(--muted);
   border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px;
-  transition: border-color 120ms ease, color 120ms ease;
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .ghost-btn:hover { color: var(--text); border-color: var(--line-strong); }
 
@@ -83,7 +91,7 @@ body {
 .chip {
   background: var(--panel); border: 1px solid var(--line); color: var(--text);
   border-radius: 6px; padding: 6px 11px; font-size: 12.5px; cursor: pointer;
-  transition: border-color 120ms ease, background-color 120ms ease;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
 .chip:hover { border-color: var(--line-strong); background: var(--accent-soft); }
 
@@ -224,20 +232,20 @@ body {
 .composer input {
   flex: 1; background: var(--panel); border: 1px solid var(--line-strong); color: var(--text);
   border-radius: 6px; padding: 11px 14px; font-size: 14.5px; outline: none;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .composer input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .round-btn {
   flex: none; width: 36px; height: 36px; border-radius: 50%;
   border: 1px solid var(--line); background: var(--panel); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  color: var(--muted); transition: border-color 120ms ease, color 120ms ease;
+  color: var(--muted); transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .round-btn .i { width: 18px; height: 18px; }
 .round-btn:hover { border-color: var(--accent); color: var(--accent); }
 .round-btn.listening {
   border-color: var(--over); color: var(--over);
-  animation: mic-pulse 1.6s ease-out infinite;
+  animation: mic-pulse 1.6s var(--ease-out) infinite;
   transform: scale(calc(1 + var(--level, 0.2) * 0.18));
 }
 @keyframes mic-pulse {
@@ -256,10 +264,10 @@ input.listening-input::placeholder { color: var(--accent); }
   flex: none; width: 36px; height: 36px; border-radius: 50%;
   border: none; background: var(--accent); color: #fff; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: filter 120ms ease;
+  transition: filter var(--dur-fast) var(--ease-out);
 }
 .send-btn:hover { filter: brightness(1.08); }
-.send-btn .i { width: 17px; height: 17px; } border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; background: var(--accent); color: white; padding: 0 20px; transition: background-color 120ms ease; }
+.send-btn .i { width: 17px; height: 17px; } border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; background: var(--accent); color: white; padding: 0 20px; transition: background-color var(--dur-fast) var(--ease-out); }
 .send-btn:hover { background: var(--accent-hover); }
 
 /* --- side rail --- */
@@ -309,7 +317,7 @@ input.listening-input::placeholder { color: var(--accent); }
   border: 2px solid var(--line-strong); background: var(--panel);
   color: var(--text); font-size: 13px; font-weight: 700;
   font-variant-numeric: tabular-nums; cursor: pointer; flex: none;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .count-pill:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
@@ -341,7 +349,7 @@ input.listening-input::placeholder { color: var(--accent); }
 .audit-chip {
   background: var(--panel); border: 1px solid var(--line); color: var(--muted);
   border-radius: 999px; padding: 4px 12px; font-size: 12px; cursor: pointer;
-  transition: border-color 120ms ease, color 120ms ease;
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .audit-chip.active, .audit-chip:hover { color: var(--text); border-color: var(--line-strong); }
 .audit-list { overflow-y: auto; padding: 8px 20px 16px; }
@@ -390,3 +398,13 @@ input.listening-input::placeholder { color: var(--accent); }
    so nobody mistakes them for product actions. */
 .chip.attack { border-style: dashed; color: var(--muted); }
 .chip.attack:hover { color: var(--ink); border-color: var(--muted); }
+
+/* prefers-reduced-motion: weaken, never zero. The error the library's own
+   charter names is collapsing everything to 0ms, which turns fades into
+   hard pops and removes feedback entirely. Every transition in this sheet
+   is a colour/feedback fade (border, colour, shadow, filter) - the things
+   the charter says to KEEP - so they stay. The only true movement is the
+   mic pulse, and that is what goes. */
+@media (prefers-reduced-motion: reduce) {
+  .mic-pulse { animation: none; }
+}
