@@ -167,9 +167,19 @@ def main() -> int:
                 not_applied.append(f"{mut_id} ({rel} missing)")
                 print(f"  SKIP  {mut_id}: {rel} not found")
                 continue
+            before = target.read_text(encoding="utf-8")
             if not apply(target, pattern, replacement):
                 not_applied.append(f"{mut_id} (pattern no longer matches {rel})")
-                print(f"  SKIP  {mut_id}: pattern not found in {rel}")
+                print(f"  SKIP  {mut_id}: pattern not found in {rel} — the code moved, "
+                      f"so this guard is currently unproven")
+                continue
+            if target.read_text(encoding="utf-8") == before:
+                # A replacement that reproduces its own anchor proves nothing:
+                # the suite stays green and the result reads as a kill.
+                not_applied.append(f"{mut_id} (replacement is a no-op)")
+                print(f"  SKIP  {mut_id}: the replacement changed nothing — an "
+                      f"unmodified guard is not a kill")
+                target.write_text(before, encoding="utf-8", newline="\n")
                 continue
             killed, out = run_tests(repo, tests, verbose)
             if killed:
