@@ -193,31 +193,31 @@ function cardHTML(card) {
       </div>`;
     case "mandate": {
       const proof = proofByProposal[card.proposal_id] || {};
+      /* Six rows, one line each, inside a fixed word budget. The approval
+       * card answers the six questions a human needs before saying yes;
+       * the dollar figures and the evidence live on the proof card above,
+       * so this card stays an authorization artifact rather than becoming
+       * a second dashboard. */
+      const whyNow = (proof.proof_steps || [])[0] || "evidence on the table";
       return `<div class="card approval">
         <div class="approval-head">APPROVAL</div>
         <h3>${esc(proof.title || card.scope.operation)}</h3>
-        <div class="kv">
-          <div><span>Provider</span><b>${esc(card.scope.provider)}</b></div>
-          <div><span>Action</span><b>${esc(card.scope.operation)}</b></div>
-          ${proof.monthly_before ? `<div><span>Current</span><b>${money(proof.monthly_before)}/mo</b></div>
-          <div><span>After</span><b>${money(proof.monthly_after)}/mo</b></div>
-          <div><span>Expected saving</span><b class="ok-text">${esc(proof.expected_saving_pct)}%</b></div>`
-          : `<div><span>Cap</span><b>${money(card.scope.max_monthly_before)}/mo</b></div>`}
-        </div>
-        ${(proof.proof_steps || []).map(s => `<div class="check-line">${esc(s)}</div>`).join("")}
-        ${proof.risk ? `<p class="meta">Risk: ${esc(proof.risk)}</p>` : ""}
         <div class="auth-block">
           <div class="auth-title">AUTHORIZATION</div>
           <div class="kv">
+            <div><span>Action</span><b>${esc(card.scope.operation)}</b></div>
             <div><span>Scope</span><b>${esc(card.scope.provider)} only</b></div>
-            <div><span>Executions</span><b>one</b></div>
-            <div><span>Expires</span><b>${esc(card.expires_at.replace("T", " ").slice(0, 19))} UTC</b></div>
-            <div><span>Proof hash</span><b class="mono">${esc(card.proof_hash.slice(0, 16))}...</b></div>
-            <div><span>Approved by</span><b>${esc(card.approver)}</b></div>
+            <div><span>Limit</span><b>${money(card.scope.max_monthly_before)}/mo · one execution</b></div>
+            <div><span>Why now</span><b>${esc(whyNow)}</b></div>
+            <div><span>Reversible?</span><b>${esc(card.rollback || "ask for the receipt")}</b></div>
+            <div><span>If wrong</span><b>nothing runs unless this mandate verifies; every refusal is logged</b></div>
           </div>
-          <p class="meta mono">sig ${esc(card.signature.slice(0, 20))}... - HMAC-SHA256, a local stand-in for AP2 credentials</p>
+          <p class="meta mono">proof ${esc(card.proof_hash.slice(0, 16))}... ·
+            approved by ${esc(card.approver)} · expires
+            ${esc(card.expires_at.replace("T", " ").slice(0, 19))} UTC ·
+            sig ${esc(card.signature.slice(0, 20))}...</p>
         </div>
-        <p class="note">Reply <b>"execute"</b> and the adapter runs — exactly this, once, before it expires. Without this signature, nothing moves.</p>
+        <p class="note">Reply <b>"execute"</b> to run it — this once, before it expires.</p>
       </div>`;
     }
     case "denied":

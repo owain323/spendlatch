@@ -161,6 +161,47 @@ class TestExecute:
         assert all(e["reason"] for e in refuses)
 
 
+class TestApprovalCard:
+    """The approval card makes six one-line promises inside a word budget.
+
+    A promise the card cannot keep (a missing rollback) or a card too dense
+    to read are both failures of the same invariant: the human must be able
+    to answer the six questions before saying yes.
+    """
+
+    LABELS = 6          # Action / Scope / Limit / Why now / Reversible? / If wrong
+    FIXED_VALUES = 18   # action + scope + limit + the fixed "if wrong" line
+    NOTE = 11           # the one-line footer under the card
+    BUDGET = 60
+
+    def test_every_action_promises_a_rollback(self):
+        from mcp_server import adapters
+        for action_id in adapters.ADAPTERS:
+            assert action_id in adapters.ROLLBACKS, (
+                f"{action_id} has an adapter but no rollback promise - the card "
+                "would render a placeholder instead of an answer")
+
+    def test_the_card_stays_inside_the_word_budget(self):
+        from mcp_server import adapters, tools
+        for action_id in adapters.ADAPTERS:
+            proof = tools.simulate_saving(action_id)
+            why_now = (proof.get("proof_steps") or [""])[0]
+            words = (self.LABELS + self.FIXED_VALUES + self.NOTE
+                     + len(adapters.ROLLBACKS[action_id].split())
+                     + len(why_now.split()))
+            assert words <= self.BUDGET, (
+                f"{action_id}: card body would run {words} words against a "
+                f"{self.BUDGET}-word budget - shorten the data, not the check")
+
+    def test_the_card_and_the_receipt_promise_the_same_rollback(self):
+        from mcp_server import adapters
+        from mcp_server import adapters as a
+        for action_id in a.ADAPTERS:
+            receipt = a.execute(action_id)
+            assert receipt["rollback"] == a.ROLLBACKS[action_id], (
+                f"{action_id}: the receipt's rollback drifted from the card's")
+
+
 class TestAdapters:
     def test_all_saving_actions_have_adapters_and_operations(self):
         from mcp_server import sample_data as data

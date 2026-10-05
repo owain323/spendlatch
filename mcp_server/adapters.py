@@ -43,6 +43,18 @@ def _base(action: dict, adapter: str, operation: str) -> dict:
     }
 
 
+ROLLBACKS: dict[str, str] = {
+    # One line per action, shown on the approval card ("Reversible?") and
+    # repeated verbatim on the receipt. Keeping both renderings on ONE source
+    # is deliberate: a card that promises a different rollback than the
+    # receipt delivers is worse than no promise at all.
+    "rightsize-ec2": "one call: ec2:ModifyInstanceAttribute back to t3.2xlarge",
+    "cancel-figma": "one call: admin:AddSeat restores the paid seat within the billing cycle",
+    "annual-zoom": "billing terms: annual plans are committed; switch evaluated before approval",
+    "route-haiku": "one call: org:UpdateRoutingPolicy back to single-model routing",
+}
+
+
 def _aws_rightsize(action: dict) -> dict:
     receipt = _base(action, "aws", "ec2:ModifyInstanceAttribute")
     receipt["changes"] = [
@@ -50,7 +62,7 @@ def _aws_rightsize(action: dict) -> dict:
         "Stopped 19-day idle window billing profile; schedule retained",
         "CloudWatch alarm retained: CPU > 60% for 30min pages the owner",
     ]
-    receipt["rollback"] = "ec2:ModifyInstanceAttribute back to t3.2xlarge (one call)"
+    receipt["rollback"] = ROLLBACKS["rightsize-ec2"]
     return receipt
 
 
@@ -61,7 +73,7 @@ def _figma_cancel_seat(action: dict) -> dict:
         "Files retained in the team workspace (no data loss)",
         "Owner notified by email (simulated)",
     ]
-    receipt["rollback"] = "admin:AddSeat restores the paid seat within the billing cycle"
+    receipt["rollback"] = ROLLBACKS["cancel-figma"]
     return receipt
 
 
@@ -71,7 +83,7 @@ def _zoom_annual(action: dict) -> dict:
         "Plan switched: Pro monthly $14.99 -> annual $149.90/yr ($12.49/mo equivalent)",
         "No feature change; meeting history and settings preserved",
     ]
-    receipt["rollback"] = "Billing terms: annual plans are committed; switch evaluated before approval"
+    receipt["rollback"] = ROLLBACKS["annual-zoom"]
     return receipt
 
 
@@ -82,7 +94,7 @@ def _openai_route(action: dict) -> dict:
         "Guardrail: 2% of traffic still samples the large model for quality drift checks",
         "Rollback switch retained in org settings",
     ]
-    receipt["rollback"] = "org:UpdateRoutingPolicy back to single-model routing"
+    receipt["rollback"] = ROLLBACKS["route-haiku"]
     return receipt
 
 

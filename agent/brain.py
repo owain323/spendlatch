@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 
-from mcp_server import actions, crossfoot, ledger, planner, tools
+from mcp_server import actions, adapters, crossfoot, ledger, planner, tools
 
 
 def _fmt_money(value: float) -> str:
@@ -165,7 +165,10 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
                 f"{_fmt_money(mandate['scope']['max_monthly_before'])}/mo, expiring at "
                 f"{mandate['expires_at'][11:19]} UTC. Say \"execute\" and I will run it."
             ),
-            "cards": [{"type": "mandate", **mandate}],
+            "cards": [{"type": "mandate", **mandate,
+                        # The approval card promises a rollback; the receipt
+                        # must deliver the same one. Both read this single source.
+                        "rollback": adapters.ROLLBACKS.get(mandate["action_id"])}],
         }
 
     # --- execute: the adapter runs only through a valid mandate -------------
