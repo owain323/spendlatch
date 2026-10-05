@@ -1,5 +1,5 @@
 # MCP initialize handshake over Streamable HTTP
-# captured 2026-10-05T14:13:44Z by tools/refresh_evidence.py against a spawned server (isolated state)
+# captured 2026-10-05T14:16:14Z by tools/refresh_evidence.py against a spawned server (isolated state)
 
-# POST http://127.0.0.1:30330/mcp (initialize, SSE frame)
+# POST http://127.0.0.1:33254/mcp (initialize, SSE frame)
 data: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":false}},"serverInfo":{"name":"spendlatch","version":"1.29.0"},"instructions":"The authorization boundary between an AI agent and a consequential action, for AI and cloud teams. Watches multi-provider bills, proves savings before proposing them, remembers budgets across sessions, and — when a mandate is signed on the web surface, by a caller holding the browser session credential, and never by this surface — executes that mandate exactly as scoped and returns a receipt. Every decision, including holds, refusals, and executions, is recorded in a hash-chained ledger. This surface cannot approve: the tool exposes no credential parameter at all, so an agent has no way to present one, whatever it claims. The mandate itself is single-use, capped, and expires in 15 minutes. The demo's session credential is self-issued and its holder is not yet cryptographically proven - the known boundary L1 in docs/THREAT-MODEL.md."}}

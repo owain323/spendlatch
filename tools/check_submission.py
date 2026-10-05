@@ -41,6 +41,17 @@ ALLOWED_NON_TOOLS = {
 }
 
 
+def _distance(a: str, b: str) -> int:
+    """Plain Levenshtein. Small inputs, called a few dozen times at most."""
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
 def registered_tools() -> set[str]:
     src = SERVER.read_text(encoding="utf-8")
     # match any decorator form, including one carrying metadata
@@ -78,11 +89,39 @@ def main() -> int:
     #    Scanned bare, not just inside backticks: the copy once named two
     #    tools that do not exist in running prose, and a judge would have
     #    called them.
+    #
+    #    Two nets, because they catch different mistakes. Tokens catch a name
+    #    invented out of thin air (list_anomalies). Distance catches a real
+    #    name mangled by one or two characters (detect_anomlies) - the mistake
+    #    a reader actually makes when typing what the document told them to
+    #    type. Neither alone is enough, and a whitelist of exceptions is
+    #    always incomplete, so neither is expressed as a blacklist.
     for name in sorted(set(re.findall(r"\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\b", text))):
         if name in tools or name in ALLOWED_NON_TOOLS:
             continue
         if any(tok in name for tok in TOOLISH):
             problems.append(f"names a tool that is not registered: {name}")
+            continue
+        closest = min(tools, key=lambda t: _distance(name, t), default=None)
+        if closest and _distance(name, closest) <= 2:
+            problems.append(
+                f"names {name}, which is not registered; the closest real tool is "
+                f"{closest} — check for a typo"
+            )
+            continue
+        # Neither net can see a name invented from nothing: it is not a
+        # near-miss of a real tool and carries no tool-ish token. Context
+        # catches it instead — a quoted identifier in a sentence that talks
+        # about calling or listing tools has to be one.
+        for sentence in re.split(r"(?<=[.!?])\s+", text):
+            if not re.search(r"\b(tool|call|calls|listed|lists|expose[sd]?|endpoint)\b",
+                             sentence, re.IGNORECASE):
+                continue
+            if f"`{name}`" in sentence:
+                problems.append(
+                    f"names {name} in a sentence about tools, but no such tool is registered"
+                )
+                break
 
     # 2. no credit for a stack this repository does not contain
     for word in NOT_IN_REPO:
