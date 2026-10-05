@@ -37,10 +37,19 @@ def collect() -> int:
 def main() -> int:
     count = collect()
     EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
+    # This file is written whole, on every run, by design: the number and the
+    # notes explaining it move together. A gate that rewrites half a file
+    # silently deletes the other half, and the next reader is left guessing.
     EVIDENCE.write_text(
         f"{count}\n\n"
-        f"Collected by tools/check_test_count.py: pytest --collect-only over tests/\n"
-        f"with no exclusions. This is the only test count the docs may quote.\n",
+        f"Collected by tools/check_test_count.py: pytest --collect-only over\n"
+        f"tests/ with no exclusions. This is the only test count the docs may\n"
+        f"quote, and this gate fails if any of them drifts.\n\n"
+        f"Two numbers are correct, and you may meet either one. This file is the\n"
+        f"whole suite. `run_checks.py` prints a smaller number in its pytest step\n"
+        f"because it excludes tests/test_mcp_roundtrip.py: that one spawns a real\n"
+        f"server subprocess, so it is covered by the separate `MCP roundtrip` step\n"
+        f"instead of running twice. Nothing is missing from either.\n",
         encoding="utf-8", newline="\n",
     )
 
@@ -68,6 +77,15 @@ def main() -> int:
         print("\nUpdate the quote, or update the suite and re-run this check.")
         return 1
     print(f"test count consistent: {count} (docs/evidence/test-count.txt)")
+    # Say the quiet part out loud. This gate runs 8 tests fewer than the
+    # headline number, and anyone who notices that gap and is not told the
+    # reason will conclude the project cannot add up.
+    print(f"  the {count} above is the whole suite; the pytest step inside "
+          f"run_checks prints fewer because it skips")
+    print("  tests/test_mcp_roundtrip.py, which spawns a real server and is "
+          "covered by the separate")
+    print("  MCP roundtrip step instead. Both numbers are correct, and "
+          "docs/evidence/test-count.txt says so.")
     return 0
 
 

@@ -75,6 +75,7 @@ def main() -> int:
         ("integrity manifest", [sys.executable, "tools/make_sha256sums.py", "--check"]),
         ("evidence freshness", [sys.executable, "tools/check_evidence_freshness.py"]),
         ("test count", [sys.executable, "tools/check_test_count.py"]),
+        ("submission copy", [sys.executable, "tools/check_submission.py"]),
     ]
     for step, argv in steps:
         if not run(step, argv):
