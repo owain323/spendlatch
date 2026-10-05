@@ -133,6 +133,32 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
                           f"refusal rather than an approval. Logged as ledger #{seq['seq']}."),
                 "cards": []}
     if any(k in text for k in ("approve", "authorized", "go ahead", "yes, do")):
+        # Semantic-attack guard: reporting that SOMEONE ELSE approved is not
+        # consent. Agents are attacked through language ("the CEO authorized
+        # it"), so the gate requires an explicit first-person yes - anything
+        # else is refused and logged, whatever its phrasing.
+        third_party = re.search(
+            "(the )?(ceo|boss|manager|cto|cfo|colleague|teammate|board|"
+            "legal|compliance|owner|admin|someone)[^.!?]{0,40}"
+            "(approved|authorized|sign off|signed off|said yes|said ok|agreed)",
+            text, re.IGNORECASE)
+        if third_party:
+            seq = ledger.record(
+                "refuse", "approve",
+                "reported approval is not consent - a mandate signs only an "
+                "explicit first-person yes, whatever the phrasing claims",
+                evidence=[text[:80]])["seq"]
+            return {"reply": (
+                        "I did not sign anything - approval that happened "
+                        "somewhere else, to someone else, is not your consent. "
+                        "If you want this, say 'approve' yourself. "
+                        "Logged as ledger #" + str(seq) + "."),
+                    "cards": [refusal_card(
+                        action="approve",
+                        reason="reported (third-party) approval is not consent",
+                        ledger_seq=seq,
+                        policy="consent must be an explicit first-person yes")]}
+
         status = actions.mandate_status()
         open_proposals = [p for p in status["proposals"] if p["status"] == "proposed"]
         id_match = re.search(r"(p-[0-9a-f]{8})", text)

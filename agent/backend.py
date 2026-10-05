@@ -113,6 +113,15 @@ def opening(session_id: str | None = None,
                         "delta_pct": briefing["overview"]["delta_pct"],
                         "anomalies": len(briefing["anomalies"]),
                         "saving_potential": briefing["total_monthly_saving_potential"],
+                        # The two saving numbers are different claims and must
+                        # never share a line: `saving_potential` is what the
+                        # evidence proves is available; `realized` is what a
+                        # signed mandate actually executed. Conflating them is
+                        # how a spend tool ends up advertising savings it
+                        # never realized.
+                        "realized": round(sum(
+                            r.get("monthly_saving", 0.0)
+                            for r in store.load_state(None)["receipts"]), 2),
                     },
                 )
             result = brain.opening(session_id)

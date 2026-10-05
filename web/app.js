@@ -23,6 +23,7 @@ const SESSION_TOKEN_KEY = "spendlatch.sessionToken";
 const proofByProposal = {};  // proposal_id -> the proof shown to
                              // the human in this session (feeds the approval artifact)
 let sessionId = localStorage.getItem(SESSION_KEY) || null;
+let realizedSaving = 0;  // executed receipts only
 let sessionToken = localStorage.getItem(SESSION_TOKEN_KEY) || null;
 
 /* The browser mints an authenticated session once; its token approves
@@ -407,7 +408,9 @@ function renderStats(stats) {
   document.getElementById("stat-month").textContent = stats.month;
   document.getElementById("stat-delta").textContent = (stats.delta_pct > 0 ? "+" : "") + stats.delta_pct + "%";
   document.getElementById("stat-anomalies").textContent = stats.anomalies;
-  document.getElementById("stat-saving").textContent = money(stats.saving_potential);
+  document.getElementById("stat-found").textContent = money(stats.saving_potential);
+  realizedSaving = stats.realized || 0;
+  document.getElementById("stat-saving").textContent = money(realizedSaving);
 }
 
 async function post(url, body) {
@@ -432,7 +435,8 @@ async function send(text) {
   // A receipt means the saving is proven now - the sidebar must reflect it.
   const receiptCard = (data.cards || []).find(c => c.type === "receipt");
   if (receiptCard && typeof receiptCard.monthly_saving === "number") {
-    document.getElementById("stat-saving").textContent = money(receiptCard.monthly_saving);
+    realizedSaving += receiptCard.monthly_saving;
+    document.getElementById("stat-saving").textContent = money(realizedSaving);
   }
   updatePipeline(data.cards);
   loadLedger();

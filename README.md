@@ -156,12 +156,12 @@ semantics** — not "exactly once external spending".
 - **MCP Apps native** — `propose_action` links an interactive approval card
   (`ui://spendlatch/approval-card`, `text/html;profile=mcp-app`) that hosts
   render inline; the same HTML speaks the postMessage JSON-RPC bridge.
-- **The MCP server is the product** — 13 typed tools, 197 pytest tests, a sealed
+- **The MCP server is the product** — 13 typed tools, 199 pytest tests, a sealed
   benchmark; not a thin wrapper around an existing API.
 
   *The four numbers, stated so they cannot be confused:*
-  **197** pytest tests collected — of which the gate's pytest step runs
-  **195** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
+  **199** pytest tests collected — of which the gate's pytest step runs
+  **197** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
   separate MCP step, because they spawn a real server subprocess.
   On top of that: **12/12** sealed benchmark cases, **8/8** MCP wire-probe
   steps, and **12/12** mutation guards killed. Those three are not pytest
@@ -249,7 +249,7 @@ Judges: see [docs/JUDGE-REPRODUCTION.md](docs/JUDGE-REPRODUCTION.md) for the
 
 | Claim | Evidence |
 |---|---|
-| 197 automated tests pass — 195 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
+| 199 automated tests pass — 197 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
 | Detection, three honestly-labeled tiers: public regression 12/12; independent hand-written suite 14/14 (boundary values, split verdicts, cross-rule interactions); derived invariance suite 24/24 (mechanical transformations of the public fixtures — proves invariance, NOT generalization) | `benchmarks/results/metrics.json`, `benchmarks/results/independent-metrics.json`, `benchmarks/results/derived-metrics.json` |
 | Real MCP client roundtrip: protocol 2025-11-25, 13/13 tools, action loop + ui:// resource over the wire | `docs/evidence/mcp-roundtrip.txt` |
 | End-to-end web flow (9 criteria, incl. mandate replay refusal) | `docs/evidence/e2e-flow.txt` |
@@ -258,6 +258,24 @@ Judges: see [docs/JUDGE-REPRODUCTION.md](docs/JUDGE-REPRODUCTION.md) for the
 
 Full claim-to-evidence binding: [docs/CLAIMS.md](docs/CLAIMS.md).
 Graded evidence register (what is NOT verified is marked so): [docs/EVIDENCE.md](docs/EVIDENCE.md).
+
+## What "simulated" covers - and what it does not
+
+The word "simulated" on this page is a scope statement, and it is narrower
+than it looks. It covers exactly two things:
+
+- the **front experience**: this is a simulated Alexa+ surface (the official
+  submission path does not expose the Alexa+ toolkits to participants);
+- the **provider adapters and billing data**: every bill is synthetic, no
+  provider call ever leaves the machine, and receipts say so.
+
+It does **not** cover the authorization machinery, which is real and runs
+locally: mandates are signed with **HMAC-SHA256** under a per-installation
+key that never leaves the server; the decision ledger is a **SHA-256 hash
+chain** that detects any edit; exported proof bundles verify **offline**
+with `tools/verify_proof.py`, without trusting the running system. The
+attack page is the proof: the forged-scope attack is refused by the
+signature check itself - a frontend string cannot fail that way.
 
 ## Security & privacy
 
@@ -269,6 +287,16 @@ Graded evidence register (what is NOT verified is marked so): [docs/EVIDENCE.md]
   single-use, scope-capped, expiring mandate — and every refusal is logged.
 
 ## Roadmap (post-hackathon)
+
+- **Standing mandates**: time-boxed, capped, revocable authorization for
+  recurring low-risk operations - the deliberate-friction model stays for
+  consequential actions, but "re-approve every few cents" is not the shape
+  for a hundred calls a day.
+- **Batch approval** with risk-based thresholds: one explicit yes covers a
+  batch of mandates whose risk scores fall under a stated line; everything
+  above it still asks.
+- **Audit export** to SIEM formats (the ledger already is a hash chain; the
+  export is a formatter, not a redesign).
 
 - ~~Optional LLM loop~~ **Landed, off by default**: an LLM planner (Strands +
   Bedrock, `SPENDLATCH_LLM=bedrock`) converts free-form language into a
