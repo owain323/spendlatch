@@ -385,13 +385,31 @@ input.listening-input::placeholder { color: var(--accent); }
 .ledger-entry .why b { color: var(--text); font-weight: 600; }
 
 /* narrow screens: fall back to a single scrolling column */
-@media (max-width: 960px) {
+/* ---- responsive: three widths, one layout ----------------------------- */
+
+/* Medium: the rail narrows instead of disappearing. The ledger panel is
+   half the product, so it only stacks at a real phone width. */
+@media (max-width: 1079px) {
+  .layout { grid-template-columns: minmax(0, 1fr) 264px; }
+  .chips { padding: 10px 14px 2px; }
+}
+
+/* Narrow: one column, rail below, composer pinned. The simulated-Alexa+
+   marker stays visible at every width - the submission path requires the
+   experience to be identifiable, and a phone is exactly where a judge
+   will first look. The tagline may go; the badge may not. */
+@media (max-width: 640px) {
   .app { height: auto; min-height: 100vh; border: none; }
   .layout { grid-template-columns: 1fr; }
   .main-col { border-right: none; }
   .chat { max-height: none; }
   .composer { position: sticky; bottom: 0; background: var(--panel); }
   .side-col { border-top: 1px solid var(--line); }
+  .topbar { padding: 10px 14px; }
+  .tagline { display: none; }
+  /* long values (rollback promises, proof hashes) need the full width */
+  .kv { grid-template-columns: 1fr; }
+  .kv b, .meta.mono { overflow-wrap: anywhere; }
 }
 
 /* Attack buttons: same family as the other chips, visibly "probe" flavored,
