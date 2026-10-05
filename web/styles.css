@@ -412,6 +412,10 @@ input.listening-input::placeholder { color: var(--accent); }
   .kv b, .meta.mono { overflow-wrap: anywhere; }
 }
 
+/* The approval card answers six questions; two columns make the answers
+   wrap mid-thought, so this card reads as six single lines. */
+.card.approval .kv { grid-template-columns: 1fr; }
+
 /* Attack buttons: same family as the other chips, visibly "probe" flavored,
    so nobody mistakes them for product actions. */
 .chip.attack { border-style: dashed; color: var(--muted); }

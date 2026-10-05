@@ -178,9 +178,13 @@ def run_attack(kind: str, req: ChatRequest) -> dict:
         reply = f"Unknown attack '{kind}'. Known: {', '.join(result['known'])}."
         cards = []
     elif result["refused"]:
-        reply = (f"Attack '{result['attack']}' was refused by the "
-                 f"{result['reason'].split(':')[0].strip().lower()} guard "
-                 f"(ledger #{result['ledger_seq']}). Nothing ran.")
+        # The guard's reason is a full sentence, so it must not be spliced
+        # into the reply (an earlier version did, producing
+        # "refused by the mandate m-... was already consumed ... guard").
+        # Each attack gets a hand-written guard phrase instead.
+        reply = (f"Attack '{result['attack']}' was refused - "
+                 f"{ATTACK_GUARD[result['attack']]}. Nothing ran; "
+                 f"refusal #{result['ledger_seq']} is in the ledger.")
         cards = [brain.refusal_card(
             action=f"attack:{result['attack']}",
             reason=result["reason"],
@@ -196,6 +200,14 @@ def run_attack(kind: str, req: ChatRequest) -> dict:
             "reason": result.get("reason"), "ledger_seq": result.get("ledger_seq"),
             "reply": reply, "cards": cards}
 
+
+ATTACK_GUARD = {
+    "replay": "single-use holds - a mandate executes at most once",
+    "self-approve": "the approval surface holds - the tool side cannot approve",
+    "over-cap": "the cap holds - a signed limit is a hard limit",
+    "expired": "expiry holds - approval is a decision, not a blank check",
+    "forged-scope": "the signature holds - an edited mandate is an unsigned mandate",
+}
 
 ATTACK_POLICY = {
     "replay": "single-use: a mandate executes at most once",
