@@ -1,4 +1,4 @@
-# pytest run 2026-10-05T14:25:10Z
+# pytest run 2026-10-05T14:26:34Z
 # generator: tools/refresh_evidence.py (pytest tests -q)
 
 ........................................................................ [ 40%]
@@ -14,4 +14,4 @@ tests/test_actions.py::TestAuthorizationBoundary::test_mcp_surface_tool_refuses_
     warnings.warn(
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-178 passed, 2 warnings in 26.17s
+178 passed, 2 warnings in 22.97s
