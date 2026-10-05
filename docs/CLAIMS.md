@@ -26,3 +26,7 @@ coverage, or LLM intelligence we did not measure.
 | C14 | Bill crossfoot | "The bill crossfoot checks that derived line items are internally consistent (quantity x unit cost == line amount; lines sum to the bill). The line items are derived by the same module from synthetic sample data, so this is an internal consistency check — never presented as independently verified. It becomes a real verifier when real provider data lands (post-hackathon)." | `mcp_server/crossfoot.py`, `tests/test_crossfoot.py` |
 
 *Last verified: 2026-09-20 against the working tree (llm-planner branch: SpendIntent planner + denial console + per-tool skill docs).*
+
+## Pointer verification
+
+The proof pointers in this file and in docs/THREAT-MODEL.md were checked against the test tree on 2026-10-05, with the suite at 178 passing. They are not re-checked mechanically on every run: a missing symbol is a renamed test, not a broken guarantee, and a gate that cries wolf gets switched off. The mutation check (tools/mutation_check.py) is the real check — it fails when a guard stops being enforced, whatever the test is called.

@@ -46,10 +46,13 @@ mcp = FastMCP(
         "The authorization boundary between an AI agent and a consequential "
         "action, for AI and cloud teams. Watches multi-provider bills, proves "
         "savings before proposing them, remembers budgets across sessions, and "
-        "— with a signed mandate issued only to an authenticated web session — "
-        "executes the approved action through provider adapters and returns a "
-        "receipt. Every decision, including holds, refusals, and executions, "
-        "is recorded in a hash-chained ledger. This surface cannot approve."
+        "— with a signed, single-use, scope-capped mandate issued only on the "
+        "web surface — executes the approved action through provider adapters "
+        "and returns a receipt. Every decision, including holds, refusals, and "
+        "executions, is recorded in a hash-chained ledger. This surface cannot "
+        "approve: it exposes no credential parameter at all, so an agent can "
+        "never present one. The demo's approval sessions are self-issued and "
+        "unverified, which is the known boundary L1 in docs/THREAT-MODEL.md."
     ),
     host=os.environ.get("SPENDLATCH_HOST", "127.0.0.1"),
     port=int(os.environ.get("SPENDLATCH_PORT", "8101")),
