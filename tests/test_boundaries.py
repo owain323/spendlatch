@@ -72,6 +72,30 @@ def test_refusal_shaped_utterance_never_signs(phrase):
     assert not issued, f"{phrase!r} was read as consent"
 
 
+@pytest.mark.parametrize("question", [
+    # Ordinary questions must keep working. The consent check once treated any
+    # sentence ending in "?" as a withheld approval, which broke the opening
+    # turn of the demo ("anything unusual?") - a regression the end-to-end
+    # flow caught, pinned here so it cannot come back.
+    "anything unusual?",
+    "how much did I spend?",
+    "why is the AWS bill up?",
+    "what should I cut?",
+])
+def test_ordinary_questions_still_route(question):
+    from agent import brain
+    actions.propose_action("rightsize-ec2")
+    token = actions.open_session()["session_token"]
+    brain.handle(question, f"sess-q-{question[:6]}", session_token=token)
+    issued = [m for m in actions.mandate_status()["mandates"] if m["status"] == "issued"]
+    assert not issued, f"{question!r} was swallowed by the consent check"
+    from mcp_server import ledger
+    reasons = [e["reason"] for e in ledger.entries() if e["kind"] == "refuse"]
+    assert not any("consent check" in r for r in reasons), (
+        f"{question!r} was treated as a withheld approval"
+    )
+
+
 def test_refusal_is_logged_as_a_decision():
     from agent import brain
     from mcp_server import ledger
@@ -136,14 +160,69 @@ def test_rollback_of_status_does_not_allow_a_second_execution():
     assert len(store.load_state(None)["receipts"]) == 1
 
 
+def test_bill_above_the_approved_cap_is_refused():
+    """The cap is its own guard, separate from proof drift and from tampering.
+
+    A mandate is signed with a cap below the real bill, so the evidence still
+    hashes to what was approved and the signature is intact — the only thing
+    that can stop the execution is the cap. (An earlier version raised the
+    bill after signing, which the proof-hash and signature checks refused
+    first, so the assertion passed without the cap ever running.)
+    """
+    from mcp_server import sample_data, store
+    action = sample_data.SAVING_ACTIONS["rightsize-ec2"]
+    real_bill = action["monthly_before"]
+    try:
+        # The bill is what it is; the human approves less than that.
+        action["monthly_before"] = real_bill
+        proposal = actions.propose_action("rightsize-ec2")
+        token = actions.open_session()["session_token"]
+        approved = actions.approve_action(proposal["proposal_id"], session_token=token)
+        state = store.load_state(None)
+        state["mandates"][approved["mandate_id"]]["scope"]["max_monthly_before"] = 1.0
+        store.save_state(state, None)
+        # Re-sign so the only broken invariant is the cap, not the signature.
+        state = store.load_state(None)
+        mandate = state["mandates"][approved["mandate_id"]]
+        secret = state.get("mandate_secret") or "x"
+        payload = {k: mandate[k] for k in actions.SIGNED_FIELDS}
+        mandate["signature"] = actions._sign(payload, secret)
+        store.save_state(state, None)
+
+        result = actions.execute_action(approved["mandate_id"])
+        assert result.get("refused"), "a bill above the approved cap still executed"
+        assert "cap" in str(result.get("error", "")).lower(), (
+            f"refused for the wrong reason: {result.get('error')}"
+        )
+    finally:
+        action["monthly_before"] = real_bill
+
+
 def test_consumption_survives_ledger_trimming():
-    from mcp_server import ledger
+    """The single-use guard must not live in the bounded ledger.
+
+    The status field is rolled back to "issued" first, so the refusal can
+    only come from the consumption claim: if that claim were stored in the
+    ledger, trimming the window would revive the mandate.
+    """
+    from mcp_server import ledger, store
     mandate = _approved("rightsize-ec2")
     actions.execute_action(mandate["mandate_id"])
+
+    state = store.load_state(None)
+    state["mandates"][mandate["mandate_id"]]["status"] = "issued"
+    store.save_state(state, None)
+
     for i in range(ledger.MAX_ENTRIES + 20):
         ledger.record("alert", "aws", f"filler {i}", path=None)
-    assert actions.execute_action(mandate["mandate_id"]).get("refused"), (
+
+    second = actions.execute_action(mandate["mandate_id"])
+    assert second.get("refused"), (
         "trimming the audit window revived a spent mandate"
+    )
+    assert "single-use" in str(second.get("error", "")), (
+        "the refusal came from the wrong guard: the consumption claim was "
+        "not the thing that blocked the replay"
     )
 
 

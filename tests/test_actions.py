@@ -202,13 +202,45 @@ class TestAuthorizationBoundary:
     """Approval is bound to an authenticated web session — the MCP surface
     must never be able to say a human agreed."""
 
-    def test_mcp_surface_cannot_approve(self):
+    def test_approve_action_refuses_without_a_session_token(self):
+        """The actions layer refuses a tokenless approval.
+
+        This is the layer test. The MCP surface's own refusal — the claim T7
+        actually makes — is covered by
+        test_mcp_surface_tool_refuses_and_cannot_be_given_a_token below.
+        """
         proposal = _propose()
         result = actions.approve_action(proposal["proposal_id"])  # no token
         assert result["refused"] is True
         assert "authenticated" in result["error"]
         assert any("authenticated" in e["reason"] for e in ledger.entries()
                    if e["kind"] == "refuse")
+
+    def test_mcp_surface_tool_refuses_and_cannot_be_given_a_token(self):
+        """T7: the MCP tool itself refuses, and exposes no way to claim a human.
+
+        Two separate properties, so they are asserted separately:
+          1. calling the registered tool refuses and logs the refusal
+          2. the signature has no session/approver parameter at all, so an
+             agent cannot pass "approver=human" even if it wants to
+        """
+        from mcp_server import server
+        import inspect
+
+        proposal = _propose()
+        result = server.approve_action(proposal["proposal_id"])
+        assert result["refused"] is True, "the MCP surface approved an action"
+        assert any("authenticated" in e["reason"] for e in ledger.entries()
+                   if e["kind"] == "refuse"), "the MCP refusal was not logged"
+
+        params = set(inspect.signature(server.approve_action).parameters)
+        assert "session_token" not in params, (
+            "the MCP approve tool accepts a session token - an agent could "
+            "hand itself one"
+        )
+        assert not (params & {"approver", "approved_by", "human"}), (
+            f"the MCP approve tool accepts a self-reported approver: {params}"
+        )
 
     def test_bogus_token_cannot_approve(self):
         proposal = _propose()

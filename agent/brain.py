@@ -81,12 +81,16 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
     # "I do NOT approve", "should I approve?" and "never approve without
     # asking" all contain the keyword; signing on any of them would hand the
     # agent the one thing this product exists to withhold.
+    #
+    # A trailing "?" is only evidence of doubt when approval language is
+    # actually present. Without that scoping, an ordinary question like
+    # "anything unusual?" would be read as a withheld approval.
     _D = r"(?:do(?:es)?\s+not|don'?t|never|no[tn]e?)\s+"
-    # A trailing "? if ..." is a question ("what happens if I approve?"), not consent.
-    _is_question = text.strip().endswith("?")
+    _approval_words = re.search(r"approve|authorize|sign|go ahead|yes, do", text, re.IGNORECASE)
+    _doubtful = _approval_words and text.strip().endswith("?")
     if re.search(_D + r"approve|without\s+(?:my\s+)?(?:asking|approval|permission)|"
                  r"do\s+not\s+approve|should\s+i\s+approve|can\s+i\s+approve|"
-                 r"\bstop\b|\bhalt\b|\bcancel\b", text, re.IGNORECASE) or _is_question:
+                 r"\bstop\b|\bhalt\b|\bcancel\b", text, re.IGNORECASE) or _doubtful:
         open_now = [p for p in actions.mandate_status()["proposals"]
                     if p["status"] == "proposed"]
         seq = ledger.record(

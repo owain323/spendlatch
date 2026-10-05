@@ -47,6 +47,10 @@ DEFAULT_STATE: dict = {
     "mandate_secret": None, # per-installation HMAC key, generated on first approval
 }
 
+# A public demo endpoint mints a session per request, so the registry is
+# capped: the oldest entries are pruned rather than growing forever.
+MAX_AUTH_SESSIONS = 500
+
 _ENV_KEY = "SPENDLATCH_STATE"
 _ANONYMOUS_WORKSPACE = "anonymous"
 
@@ -107,13 +111,23 @@ def open_auth_session() -> dict:
     The server keeps only the token HASH; the browser holds the token and
     presents it on approve. The registry maps the hash to the workspace id
     (derived from the hash), so later requests resolve their own workspace.
+
+    A demo endpoint is the easiest thing on the internet to hit, so the
+    registry is capped and pruned: the oldest entries go first. That keeps
+    the file from growing without bound, and bounds how many sessions stay
+    usable at once.
     """
     token = secrets.token_hex(32)
     h = _token_hash(token)
     workspace = h[:12]
     auth_path = _auth_file()
     auth = load_state(auth_path)
-    auth["auth_sessions"][h] = {
+    sessions = auth["auth_sessions"]
+    if len(sessions) >= MAX_AUTH_SESSIONS:
+        oldest = sorted(sessions, key=lambda k: sessions[k].get("created", ""))[:len(sessions) - MAX_AUTH_SESSIONS + 1]
+        for key in oldest:
+            sessions.pop(key, None)
+    sessions[h] = {
         "workspace": workspace,
         "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
