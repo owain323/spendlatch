@@ -9,7 +9,7 @@ to the way it fails when that behavior breaks.
 | Layer | Lines | Role |
 |---|---|---|
 | Product kernel (`mcp_server/` + `agent/` + `web/`) | 4,509 | the thing being built |
-| Verification (`tests/`) | 2,300 | 166 collected pytest cases |
+| Verification (`tests/`) | 2,300 | 170 collected pytest cases |
 | Quality gates (`tools/` + `benchmarks/`) | 2,175 | what keeps the above honest |
 
 The verification layer is roughly the same size as the kernel **on purpose**:
@@ -26,7 +26,7 @@ Tests are NOT more than the kernel; they are about 47% of it.
 | `test_boundaries.py` | 14 | Threat-model rows: swapped adapters under valid signatures, refusal-shaped utterances, spend denial, consumption-claim survival, proof bundles | The named boundary stops holding |
 | `test_api.py` | 16 | The web surface: opening, chat routes, session memory, cross-session "Welcome back" | The HTTP contract drifts from what the UI sends |
 | `test_ledger.py` | 11 | Hash-chained decision ledger: append, verify, challenge, suppression | Silence or tampering goes undetected |
-| `test_tools.py` | 44 | The analysis layer: detection, evidence, thresholds, unit economics | Analysis drifts from its documented behavior |
+| `test_tools.py` | 53 | The analysis layer: detection, evidence, thresholds, unit economics | Analysis drifts from its documented behavior |
 | `test_planner.py` | 12 | The optional LLM planner boundary: intents are parsed, never authorized | The planner gains authority it must not have |
 | `test_store.py` | 7 | Persistence: atomic writes, corruption fail-closed, session registry caps | State loss becomes silent |
 | `test_benchmark.py` | 5 | The sealed benchmark machinery itself | A benchmark that cannot fail |

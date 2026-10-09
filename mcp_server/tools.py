@@ -235,11 +235,19 @@ def analyze_provider(p: dict, months: list[str], latest: str, prev: str | None) 
     return None
 
 
-def task_drift_finding(providers: list[dict], months: list[str]) -> dict | None:
-    """Canary: AI provider whose cost per task drifts up while volume falls."""
+def task_drift_findings(providers: list[dict], months: list[str]) -> list[dict]:
+    """Canary: AI providers whose cost per task drifts up while volume falls.
+
+    Returns EVERY qualifying provider, not the first: with two AI vendors
+    drifting past the threshold in the same month, reporting one of them is
+    a missed finding, and the canary exists precisely so that cannot happen
+    quietly. Sorted by finding id, so the result does not depend on the
+    order of the input list.
+    """
     latest, prev = months[-1], months[-2] if len(months) >= 2 else None
     if not prev:
-        return None
+        return []
+    findings: list[dict] = []
     for row in unit_economics(providers, months)["providers"]:
         drift = row["drift"]
         if not drift or drift["mom_pct"] is None or drift["mom_pct"] < TASK_DRIFT_PCT:
@@ -254,7 +262,7 @@ def task_drift_finding(providers: list[dict], months: list[str]) -> dict | None:
                 f"{p['id']}.task_volume"),
         ]
         strong = vol_latest < vol_prev  # price up AND volume down = strongest waste signal
-        return {
+        findings.append({
             "id": f"taskdrift-{p['id']}", "provider": p["name"], "verdict": "flag", "eligible": True,
             "kind": "task_drift",
             "title": f"{p['name']} cost per task is drifting up while volume falls",
@@ -263,8 +271,8 @@ def task_drift_finding(providers: list[dict], months: list[str]) -> dict | None:
             "evidence": evidence,
             "action_ids": ([a for a in data.SAVING_ACTIONS if data.SAVING_ACTIONS[a]["provider"] == p["id"]]
                            or [f"route-{p['id']}"]),
-        }
-    return None
+        })
+    return sorted(findings, key=lambda f: f["id"])
 
 
 def analyze_dataset(providers: list[dict], months: list[str]) -> list[dict]:
@@ -273,9 +281,7 @@ def analyze_dataset(providers: list[dict], months: list[str]) -> list[dict]:
     latest = months[-1]
     prev = months[-2] if len(months) >= 2 else None
     findings = [f for p in providers if (f := analyze_provider(p, months, latest, prev))]
-    task_finding = task_drift_finding(providers, months)
-    if task_finding:
-        findings.append(task_finding)
+    findings.extend(task_drift_findings(providers, months))
     return findings
 
 

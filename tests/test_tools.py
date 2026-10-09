@@ -331,3 +331,49 @@ class TestDecisionLedgerView:
         entries = tools.decision_ledger()["entries"]
         seqs = [e["seq"] for e in entries]
         assert seqs == sorted(seqs, reverse=True)
+
+
+# ------------------------------------------- SL-004: multi-provider canary
+
+class TestTaskDriftMultiProvider:
+    """SL-004: EVERY provider crossing the cost-per-task threshold must be
+    reported. The canary stopped at the first match, so a second drifting
+    AI provider would silently disappear behind the first one."""
+
+    def _drift_provider(self, pid: str, name: str, cost_prev: float,
+                        cost_latest: float, vol: int = 1000) -> dict:
+        """Cost per task moves cost_prev -> cost_latest at fixed volume."""
+        months = data.MONTHS
+        monthly = {m: cost_prev for m in months}
+        monthly[months[-1]] = cost_latest
+        return {
+            "id": pid, "name": name, "category": "ai-api",
+            "monthly": monthly,
+            "task_volume": {m: vol for m in months},
+            "evidence": {"driver": "tasks", "detail": "test fixture",
+                         "usage_matches_value": False},
+        }
+
+    def test_two_drifting_providers_are_both_reported(self):
+        a = self._drift_provider("a", "Alpha", 100.0, 120.0)   # +20%
+        b = self._drift_provider("b", "Beta", 200.0, 240.0)    # +20%
+        findings = tools.task_drift_findings([a, b], data.MONTHS)
+        ids = {f["id"] for f in findings}
+        assert ids == {"taskdrift-a", "taskdrift-b"}, (
+            f"expected both canaries, got {ids} - a drifting provider went "
+            "unreported")
+
+    def test_no_drift_returns_empty_list(self):
+        a = self._drift_provider("a", "Alpha", 100.0, 100.0)
+        assert tools.task_drift_findings([a], data.MONTHS) == []
+
+    def test_result_is_independent_of_input_order(self):
+        a = self._drift_provider("a", "Alpha", 100.0, 120.0)
+        b = self._drift_provider("b", "Beta", 200.0, 240.0)
+        ids1 = {f["id"] for f in tools.task_drift_findings([a, b], data.MONTHS)}
+        ids2 = {f["id"] for f in tools.task_drift_findings([b, a], data.MONTHS)}
+        assert ids1 == ids2
+
+    def test_below_threshold_is_not_reported(self):
+        a = self._drift_provider("a", "Alpha", 100.0, 110.0)   # +10% < 15%
+        assert tools.task_drift_findings([a], data.MONTHS) == []
