@@ -9,7 +9,7 @@ to the way it fails when that behavior breaks.
 | Layer | Lines | Role |
 |---|---|---|
 | Product kernel (`mcp_server/` + `agent/` + `web/`) | 4,509 | the thing being built |
-| Verification (`tests/`) | 2,175 | 164 collected pytest cases |
+| Verification (`tests/`) | 2,300 | 166 collected pytest cases |
 | Quality gates (`tools/` + `benchmarks/`) | 2,175 | what keeps the above honest |
 
 The verification layer is roughly the same size as the kernel **on purpose**:
@@ -33,6 +33,7 @@ Tests are NOT more than the kernel; they are about 47% of it.
 | `test_crossfoot.py` | 3 | Cost cross-footing (lines always reconcile) | Totals that no longer cross-foot |
 | `test_verify.py` | 4 | Offline proof-bundle verification | A bundle that verifies without matching state |
 | `test_seam.py` | 1 | The execute->record seam: a crash after the adapter ran must not re-arm the mandate | A double execution after a crash |
+| `test_cross_surface_workflow.py` | 2 |
 | `test_mcp_roundtrip.py` | 2 | The real wire: protocol negotiation, tool listing, full loop, refusal over the wire, MCP Apps resource | Protocol drift a mock would hide |
 
 ## Why the suite cannot quietly rot

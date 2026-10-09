@@ -52,7 +52,20 @@ DEFAULT_STATE: dict = {
 MAX_AUTH_SESSIONS = 500
 
 _ENV_KEY = "SPENDLATCH_STATE"
+_ENV_DATA_DIR = "SPENDLATCH_DATA_DIR"
 _ANONYMOUS_WORKSPACE = "anonymous"
+
+
+def data_root() -> Path:
+    """Root directory for per-workspace state files and the auth registry.
+
+    Default: the repo's data/ directory. SPENDLATCH_DATA_DIR relocates the
+    whole root - used by cross-process integration tests so two spawned
+    servers never touch the developer's real data/. It changes WHERE state
+    lives, never HOW workspaces are resolved.
+    """
+    raw = os.environ.get(_ENV_DATA_DIR)
+    return Path(raw) if raw else Path(__file__).resolve().parent.parent / "data"
 
 # Process-level current workspace. The web backend sets this per request
 # under its global state lock; tests and probes never touch it (they use
@@ -83,7 +96,7 @@ def state_path(path: Path | None = None) -> Path:
     workspace = _current_workspace or _ANONYMOUS_WORKSPACE
     # workspace ids are hex fingerprints minted by this module; sanitize anyway
     safe = "".join(c for c in workspace if c.isalnum() or c == "-")[:64] or "anonymous"
-    return Path(__file__).resolve().parent.parent / "data" / "workspaces" / f"{safe}.json"
+    return data_root() / "workspaces" / f"{safe}.json"
 
 
 def _token_hash(token: str) -> str:
@@ -98,7 +111,7 @@ def _auth_file() -> Path:
     raw = os.environ.get(_ENV_KEY)
     if raw:
         return Path(raw)
-    return Path(__file__).resolve().parent.parent / "data" / "auth-sessions.json"
+    return data_root() / "auth-sessions.json"
 
 
 def _auth_map() -> dict:

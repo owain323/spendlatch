@@ -1,0 +1,10 @@
+[1/5] spawning MCP server and Web backend as separate processes
+      ready: mcp :1674  web :1675  (shared data root: C:\Users\czj17751\AppData\Local\Temp\spendlatch-cross-07gr5ufo, no SPENDLATCH_STATE)
+[2/5] MCP client: propose_action over the wire
+      proposal_id = p-235edd4a
+[3/5] Web session: approve that exact proposal id
+      NO mandate - web reply: I don't have an open proposal p-235edd4a. Ask for 'mandate status' to see what is on the table.
+[5/5] isolation: a second web session must see nothing of it
+      ISOLATION_OK (second session issued no mandate)
+      web-ledger probe skipped: HTTPError
+CROSS_SURFACE_BROKEN:approval
