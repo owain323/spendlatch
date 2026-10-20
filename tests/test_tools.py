@@ -377,3 +377,114 @@ class TestTaskDriftMultiProvider:
     def test_below_threshold_is_not_reported(self):
         a = self._drift_provider("a", "Alpha", 100.0, 110.0)   # +10% < 15%
         assert tools.task_drift_findings([a], data.MONTHS) == []
+
+
+# ------------------------------------ SL-005/006: history depth and precision
+
+class TestDetectionEligibilityAndPrecision:
+    """One history gate for every detector; thresholds read raw values."""
+
+    def _provider(self, pid, monthly, vol=None):
+        p = {"id": pid, "name": pid.upper(), "category": "ai-api",
+             "monthly": monthly,
+             "evidence": {"driver": "tasks", "detail": "fixture",
+                          "usage_matches_value": False}}
+        if vol is not None:
+            p["task_volume"] = vol
+        return p
+
+    def test_two_months_of_history_cannot_trigger_a_drift_finding(self):
+        months = data.MONTHS
+        # only the last two months carry data -> below MIN_HISTORY_MONTHS
+        monthly = {months[-2]: 100.0, months[-1]: 120.0}
+        vol = {months[-2]: 1000, months[-1]: 1000}
+        out = tools.task_drift_findings([self._provider("a", monthly, vol)], months)
+        assert out == [], "2 months of history must not judge a multi-month trend"
+
+    def test_three_months_of_history_is_eligible(self):
+        months = data.MONTHS
+        monthly = {months[-3]: 95.0, months[-2]: 100.0, months[-1]: 120.0}
+        vol = {m: 1000 for m in months[-3:]}
+        out = tools.task_drift_findings([self._provider("a", monthly, vol)], months)
+        assert [f["id"] for f in out] == ["taskdrift-a"]
+
+    def test_missing_middle_month_reduces_depth(self):
+        months = data.MONTHS
+        # three calendar months, but the middle one has no data -> 2 points
+        monthly = {months[-3]: 95.0, months[-1]: 120.0}
+        vol = {m: 1000 for m in months[-3:]}
+        out = tools.task_drift_findings([self._provider("a", monthly, vol)], months)
+        assert out == [], "missing months must not be papered over"
+
+    def test_zero_volume_month_is_not_a_data_point(self):
+        months = data.MONTHS
+        monthly = {m: 100.0 for m in months[-3:]}
+        vol = {months[-3]: 1000, months[-2]: 0, months[-1]: 1000}
+        out = tools.task_drift_findings([self._provider("a", monthly, vol)], months)
+        assert out == [], "a zero-volume month cannot yield a cost per task"
+
+    def test_threshold_uses_raw_value_not_the_rounded_display(self):
+        months = data.MONTHS
+        # raw drift is 14.96% -> displays as 15.0 after rounding. The rounded
+        # number must never be what fires the canary.
+        monthly = {m: 100.0 for m in months[-3:]}
+        monthly[months[-1]] = 114.96
+        vol = {m: 1000 for m in months[-3:]}
+        out = tools.task_drift_findings([self._provider("a", monthly, vol)], months)
+        assert out == [], "a rounded display value decided a threshold"
+
+    def test_exactly_at_threshold_fires(self):
+        months = data.MONTHS
+        monthly = {m: 100.0 for m in months[-3:]}
+        monthly[months[-1]] = 115.0   # exactly +15.0%
+        vol = {m: 1000 for m in months[-3:]}
+        out = tools.task_drift_findings([self._provider("a", monthly, vol)], months)
+        assert [f["id"] for f in out] == ["taskdrift-a"]
+
+    def test_display_keeps_two_decimals_and_exposes_raw(self):
+        econ = tools.unit_economics()
+        row = econ["providers"][0]
+        for point in row["points"]:
+            assert round(point["cost_per_1k_tasks"], 2) == point["cost_per_1k_tasks"]
+        assert "mom_pct_raw" in row["drift"]
+
+
+# ------------------------------- SL-007: sustained trend is a corroborator
+
+class TestSustainedTrendSemantics:
+    """The docs now say what the code does: sustained_trend is evidence on a
+    spike, not a detector. A slow rise that never crosses the spike
+    thresholds must not be reported as a sustained-trend finding."""
+
+    def _monotonic(self, start: float, step: float) -> dict:
+        months = data.MONTHS[-5:]
+        monthly = {m: round(start + i * step, 2) for i, m in enumerate(months)}
+        return {"id": "a", "name": "ALPHA", "category": "ai-api",
+                "monthly": monthly,
+                "evidence": {"driver": "tokens", "detail": "fixture",
+                             "usage_matches_value": True}}
+
+    def test_a_slow_steady_rise_is_not_a_finding(self):
+        # +3% per month: monotonic, but no spike threshold is crossed
+        p = self._monotonic(100.0, 3.0)
+        f = tools.analyze_provider(p, data.MONTHS, data.MONTHS[-1], data.MONTHS[-2])
+        assert f is None or f["verdict"] != "flag", (
+            "a slow sustained rise was reported as a flag - the docs say it "
+            "is not an independent detector")
+
+    def test_a_spike_with_monotonic_history_carries_the_corroboration(self):
+        months = data.MONTHS[-5:]
+        monthly = {m: 100.0 for m in months}
+        monthly[months[-1]] = 160.0          # +33% spike, and monotonically up
+        monthly[months[-2]] = 120.0
+        monthly[months[-3]] = 105.0
+        p = {"id": "a", "name": "ALPHA", "category": "saas", "monthly": monthly,
+             "evidence": {"driver": "seats", "detail": "fixture",
+                          # False: usage does NOT explain the rise, so this is
+                          # a flag rather than a keep (that is the do-not-cut path)
+                          "usage_matches_value": False}}
+        f = tools.analyze_provider(p, data.MONTHS, data.MONTHS[-1], data.MONTHS[-2])
+        assert f is not None and f["verdict"] == "flag", f and f["verdict"]
+        signals = {e["signal"] for e in f["evidence"]}
+        assert "sustained_trend" in signals, (
+            "a monotonic four-month rise alongside a spike must corroborate it")

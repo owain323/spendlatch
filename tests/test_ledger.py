@@ -95,3 +95,25 @@ class TestHashChain:
         store.save_state(state, path)
         result = ledger.verify_chain()
         assert result["ok"] is False and result["broken_at"] == 2
+
+
+def test_seq_stays_monotonic_past_the_retention_cap(tmp_path, monkeypatch):
+    """SL-008: the retained window is bounded; the sequence number is not.
+
+    With len(chain)+1 as the generator, every entry after the cap got
+    seq=501 forever - silent corruption of every audit reference.
+    """
+    monkeypatch.setenv("SPENDLATCH_STATE", str(tmp_path / "state.json"))
+    total = ledger.MAX_ENTRIES + 20
+    for i in range(total):
+        ledger.record("alert", f"s{i}", "cap test")
+    chain = store.load_state()["ledger"]
+    seqs = [e["seq"] for e in chain]
+    assert len(chain) == ledger.MAX_ENTRIES
+    assert seqs == sorted(seqs), "seq went backwards after the cap"
+    assert len(set(seqs)) == len(seqs), "seq values are not unique"
+    assert seqs[0] == total - ledger.MAX_ENTRIES + 1
+    assert seqs[-1] == total
+    assert ledger.verify_chain()["ok"] is True
+    # the next write continues from the true high-water mark
+    assert ledger.record("alert", "after", "still counting")["seq"] == total + 1

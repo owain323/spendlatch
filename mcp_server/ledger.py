@@ -44,8 +44,16 @@ def record(kind: str, subject: str, reason: str, evidence: list[str] | None = No
     state = store.load_state(path)
     chain = state["ledger"]
     prev_hash = chain[-1]["hash"] if chain and "hash" in chain[-1] else GENESIS_HASH
+    # seq must be monotonic for the life of the ledger, not for the life of
+    # the retained window: `len(chain) + 1` reuses 501 forever once the cap
+    # is reached, which silently corrupts every external audit reference.
+    # The counter is persisted alongside the chain and migrates itself from
+    # the newest surviving entry.
+    last_seq = chain[-1].get("seq", 0) if chain else 0
+    seq = max(int(state.get("ledger_seq", 0)), int(last_seq)) + 1
+    state["ledger_seq"] = seq
     body = {
-        "seq": len(chain) + 1,
+        "seq": seq,
         "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "kind": kind,
         "subject": subject,

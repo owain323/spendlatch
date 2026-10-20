@@ -4,13 +4,19 @@
 
 ## Supported — and only these
 
-Detection classes (5):
+Detection classes (4):
 
 1. Month-over-month spend spike (pct + absolute thresholds)
-2. Sustained multi-month trend
-3. Silent trial-to-paid conversion
-4. Zombie subscription (unused >= 45 days while billing)
-5. Cost-per-task drift for AI API providers (the canary metric)
+2. Silent trial-to-paid conversion
+3. Zombie subscription (unused >= 45 days while billing)
+4. Cost-per-task drift for AI API providers (the canary metric)
+
+Corroborating signal (NOT an independent detector): **sustained multi-month
+trend**. When a month-over-month spike already fires and the last four
+months rose monotonically, the finding gains a `sustained_trend` evidence
+line. A slow, steady rise that never crosses the spike thresholds does not
+produce a finding of its own - the freeze removed that claim rather than
+ship a detector that does not exist.
 
 Tool surface (13 MCP tools; the original freeze listed 9 - six were added during the security and voice hardening rounds, all within the frozen mission): `spending_overview`, `detect_anomalies`,
 `simulate_saving`, `set_budget`, `budget_status`, `list_subscriptions`,

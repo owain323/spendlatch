@@ -103,15 +103,20 @@ def unit_economics(providers: list[dict] | None = None, months: list[str] | None
         if not volume:
             continue
         points = []
+        raw = []  # unrounded cost per 1K tasks - ALL threshold math uses this
         for m in months:
             if m in p["monthly"] and m in volume and volume[m] > 0:
-                points.append({"month": m, "cost_per_1k_tasks": _round(p["monthly"][m] / volume[m] * 1000)})
+                exact = p["monthly"][m] / volume[m] * 1000
+                raw.append(exact)
+                # rounding is a display concern: it must never decide a threshold
+                points.append({"month": m, "cost_per_1k_tasks": _round(exact)})
         drift = None
-        if len(points) >= 2:
-            first, last = points[0]["cost_per_1k_tasks"], points[-1]["cost_per_1k_tasks"]
-            prev = points[-2]["cost_per_1k_tasks"]
+        if len(raw) >= 2:
+            first, last, prev = raw[0], raw[-1], raw[-2]
             drift = {
+                # mom_pct is rounded for humans; mom_pct_raw is the decision value
                 "mom_pct": round((last - prev) / prev * 100, 1) if prev else None,
+                "mom_pct_raw": ((last - prev) / prev * 100) if prev else None,
                 "since_first_pct": round((last - first) / first * 100, 1) if first else None,
             }
         rows.append({
@@ -249,8 +254,13 @@ def task_drift_findings(providers: list[dict], months: list[str]) -> list[dict]:
         return []
     findings: list[dict] = []
     for row in unit_economics(providers, months)["providers"]:
+        # History depth gate: the same MIN_HISTORY_MONTHS the provider
+        # analysis uses. Two months of data is not enough to judge a trend in
+        # one branch while the other branch refuses for lack of history.
+        if len(row["points"]) < MIN_HISTORY_MONTHS:
+            continue
         drift = row["drift"]
-        if not drift or drift["mom_pct"] is None or drift["mom_pct"] < TASK_DRIFT_PCT:
+        if not drift or drift["mom_pct_raw"] is None or drift["mom_pct_raw"] < TASK_DRIFT_PCT:
             continue
         p = next(pr for pr in providers if pr["id"] == row["provider_id"])
         vol_latest = p["task_volume"].get(latest, 0)
