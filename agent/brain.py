@@ -173,8 +173,32 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
             if target is None:
                 return {"reply": f"I don't have an open proposal {id_match.group(1)}. "
                                  "Ask for 'mandate status' to see what is on the table.", "cards": []}
+        elif len(open_proposals) > 1:
+            # Several actions are on the table and the message names none of
+            # them. A bare "approve" cannot say WHICH financial action it
+            # means, so it signs nothing and asks. "Newest first" would turn
+            # an ambiguous word into an authorization - the one error this
+            # product exists to prevent.
+            ids = ", ".join(p["proposal_id"] for p in open_proposals)
+            titles = "; ".join(f"{p['proposal_id']} {p.get('title', 'proposal')}"
+                               for p in open_proposals[:3])
+            return {"reply": (
+                f"{len(open_proposals)} actions are waiting, and a bare \"approve\" "
+                f"does not say which one. Nothing was signed. Open: {titles}"
+                + (" …" if len(open_proposals) > 3 else "")
+                + f". Say \"approve {open_proposals[0]['proposal_id']}\" to authorize "
+                  f"exactly that one. ({ids})"),
+                "cards": []}
+        elif re.search(r"\b(second|third|other|instead|not the|first one)\b", text):
+            # Choice language without an id: "approve the second one instead"
+            # is a comparison, not a consent to a specific action.
+            return {"reply": ("That names a choice rather than one action, and no id "
+                              "came with it, so nothing was signed. Name the proposal id "
+                              "you mean: \"approve p-xxxxxxxx\"."),
+                    "cards": []}
         elif open_proposals:
-            target = open_proposals[0]  # newest first
+            # exactly one candidate and an explicit yes: unambiguous
+            target = open_proposals[0]
         else:
             return {"reply": "There is nothing on the table to approve. Ask me to "
                              "\"prove the saving\" first — I only act on proven actions.",
