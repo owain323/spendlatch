@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 
-from mcp_server import actions, adapters, crossfoot, ledger, planner, tools
+from mcp_server import actions, adapters, crossfoot, ledger, planner, store, tools
 
 
 def _fmt_money(value: float) -> str:
@@ -168,8 +168,24 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
         status = actions.mandate_status()
         open_proposals = [p for p in status["proposals"] if p["status"] == "proposed"]
         id_match = re.search(r"(p-[0-9a-f]{8})", text)
+        approval_path = None
         if id_match:
-            target = next((p for p in open_proposals if p["proposal_id"] == id_match.group(1)), None)
+            pid = id_match.group(1)
+            target = next((p for p in open_proposals if p["proposal_id"] == pid), None)
+            if target is None:
+                # Not in this session's workspace: it may be a proposal the
+                # MCP surface minted and this session redeemed a handoff for.
+                # Then the approval is written WHERE THE ACTION WILL RUN (the
+                # MCP workspace) - the human approves in the web UI, the
+                # mandate lives with its executor.
+                registry = store.load_state(None).get("handed_off", {})
+                if pid in registry:
+                    approval_path = store.workspace_path(
+                        registry[pid].get("workspace", "mcp"))
+                    handoff_state = store.load_state(approval_path)
+                    candidate = handoff_state["proposals"].get(pid)
+                    if candidate is not None and candidate.get("status") == "proposed":
+                        target = candidate
             if target is None:
                 return {"reply": f"I don't have an open proposal {id_match.group(1)}. "
                                  "Ask for 'mandate status' to see what is on the table.", "cards": []}
@@ -185,7 +201,7 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
             return {"reply": (
                 f"{len(open_proposals)} actions are waiting, and a bare \"approve\" "
                 f"does not say which one. Nothing was signed. Open: {titles}"
-                + (" …" if len(open_proposals) > 3 else "")
+                + (" ..." if len(open_proposals) > 3 else "")
                 + f". Say \"approve {open_proposals[0]['proposal_id']}\" to authorize "
                   f"exactly that one. ({ids})"),
                 "cards": []}
@@ -203,7 +219,8 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
             return {"reply": "There is nothing on the table to approve. Ask me to "
                              "\"prove the saving\" first — I only act on proven actions.",
                     "cards": []}
-        mandate = actions.approve_action(target["proposal_id"], session_token=session_token)
+        mandate = actions.approve_action(target["proposal_id"], session_token=session_token,
+                                         state_path=approval_path)
         if mandate.get("refused"):
             hint = (" Reload the page to re-authenticate your session, then approve again."
                     if "authenticated" in mandate["error"] else "")

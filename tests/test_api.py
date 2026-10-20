@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent.backend import app
+from mcp_server import store
 
 
 @pytest.fixture()
@@ -122,3 +123,42 @@ class TestStatic:
 
     def test_health(self, client):
         assert client.get("/api/health").json() == {"status": "ok"}
+
+
+# ------------------------------------------- approval handoff (cross-surface)
+
+class TestApprovalHandoff:
+    """A one-time code is the bridge from the MCP surface to a human approval."""
+
+    def _mint_handoff(self, expired: bool = False) -> tuple[str, str]:
+        from datetime import datetime, timedelta, timezone
+        mcp_path = store.workspace_path("mcp")
+        state = store.load_state(mcp_path)
+        pid = "p-handf00d"
+        state["proposals"][pid] = {"proposal_id": pid, "status": "proposed",
+                                   "title": "Handoff fixture"}
+        expires = (datetime.now(timezone.utc) + timedelta(
+            minutes=-1 if expired else 15)).isoformat(timespec="seconds")
+        state["handoffs"]["abc123"] = {"proposal_id": pid, "expires_at": expires,
+                                       "used": False, "created_at": expires}
+        store.save_state(state, mcp_path)
+        return pid, "abc123"
+
+    def test_unknown_code_is_refused(self, client):
+        token = client.post("/api/session").json()["session_token"]
+        out = client.post("/api/handoff", json={"code": "nope", "session_token": token}).json()
+        assert out["ok"] is False and "unknown" in out["error"]
+
+    def test_expired_code_is_refused(self, client):
+        pid, code = self._mint_handoff(expired=True)
+        token = client.post("/api/session").json()["session_token"]
+        out = client.post("/api/handoff", json={"code": code, "session_token": token}).json()
+        assert out["ok"] is False and "expired" in out["error"]
+
+    def test_code_is_one_time(self, client):
+        pid, code = self._mint_handoff()
+        token = client.post("/api/session").json()["session_token"]
+        first = client.post("/api/handoff", json={"code": code, "session_token": token}).json()
+        assert first["ok"] is True and first["proposal_id"] == pid
+        second = client.post("/api/handoff", json={"code": code, "session_token": token}).json()
+        assert second["ok"] is False and "already used" in second["error"]

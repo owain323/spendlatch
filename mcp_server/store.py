@@ -45,6 +45,10 @@ DEFAULT_STATE: dict = {
                            # pressure and let a spent mandate run again.
     "receipts": [],         # execution receipts (adapter reports)
     "mandate_secret": None, # per-installation HMAC key, generated on first approval
+    "handoffs": {},         # MCP workspace: one-time approval handoff codes
+                            # code -> {proposal_id, created_at, expires_at, used}
+    "handed_off": {},       # web workspace: proposals this session may approve
+                            # in the MCP workspace (proposal_id -> {workspace, code})
 }
 
 # A public demo endpoint mints a session per request, so the registry is
@@ -93,9 +97,19 @@ def state_path(path: Path | None = None) -> Path:
     raw = os.environ.get(_ENV_KEY)
     if raw:
         return Path(raw)
-    workspace = _current_workspace or _ANONYMOUS_WORKSPACE
+    return workspace_path(_current_workspace)
+
+
+def workspace_path(workspace: str | None) -> Path:
+    """Absolute state-file path for a named workspace.
+
+    Exposed so a surface can address ANOTHER workspace explicitly - the
+    approval handoff needs exactly that: the web session approves a proposal
+    that lives in the MCP workspace, without either side guessing a path.
+    """
     # workspace ids are hex fingerprints minted by this module; sanitize anyway
-    safe = "".join(c for c in workspace if c.isalnum() or c == "-")[:64] or "anonymous"
+    safe = "".join(c for c in (workspace or _ANONYMOUS_WORKSPACE)
+                   if c.isalnum() or c == "-")[:64] or "anonymous"
     return data_root() / "workspaces" / f"{safe}.json"
 
 

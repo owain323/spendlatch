@@ -186,6 +186,13 @@ def approval_card_app() -> str:
 
 
 def main() -> None:
+    # The MCP surface declares its own workspace instead of silently landing
+    # in "anonymous" (which any tokenless web request also uses). Proposals
+    # minted here carry a one-time approval handoff that a web session can
+    # redeem - that is how the human approves an action the tool surface
+    # proposed, without either side sharing a global state file.
+    from . import store
+    store.set_workspace("mcp")
     mcp.run(transport="streamable-http")
 
 

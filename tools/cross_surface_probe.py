@@ -87,7 +87,7 @@ def _unwrap(result) -> dict:
     return data
 
 
-async def _mcp_propose(url: str) -> str:
+async def _mcp_propose(url: str) -> tuple[str, str | None]:
     from mcp import ClientSession
     from mcp.client.streamable_http import streamablehttp_client
     async with streamablehttp_client(url) as (read, write, _):
@@ -98,7 +98,8 @@ async def _mcp_propose(url: str) -> str:
             data = _unwrap(result)
             pid = data.get("proposal_id")
             assert pid, f"no proposal_id in propose response: {str(data)[:200]}"
-            return pid
+            handoff = (data.get("approval_handoff") or {}).get("code")
+            return pid, handoff
 
 
 async def _mcp_execute(url: str, mandate_id: str) -> dict:
@@ -128,7 +129,7 @@ def main() -> int:
         # deliberately NO SPENDLATCH_STATE: the default per-workspace file
         # topology IS the configuration under test.
 
-        log("[1/5] spawning MCP server and Web backend as separate processes")
+        log("[1/6] spawning MCP server and Web backend as separate processes")
         err_mcp = tmp / "mcp-stderr.log"
         err_web = tmp / "web-stderr.log"
         with open(err_mcp, "w+b") as f1, open(err_web, "w+b") as f2:
@@ -144,12 +145,21 @@ def main() -> int:
             log(f"      ready: mcp :{mcp_port}  web :{web_port}  "
                 f"(shared data root: {tmp}, no SPENDLATCH_STATE)")
 
-            log("[2/5] MCP client: propose_action over the wire")
-            pid = asyncio.run(_mcp_propose(f"http://127.0.0.1:{mcp_port}/mcp"))
-            log(f"      proposal_id = {pid}")
+            log("[2/6] MCP client: propose_action over the wire")
+            pid, code = asyncio.run(_mcp_propose(f"http://127.0.0.1:{mcp_port}/mcp"))
+            log(f"      proposal_id = {pid}  handoff = {'yes' if code else 'NONE'}")
 
-            log("[3/5] Web session: approve that exact proposal id")
+            log("[3/6] Web session: redeem the one-time approval handoff")
             tok = _web(web_port, "/api/session", {})["session_token"]
+            redeemed = _web(web_port, "/api/handoff",
+                            {"code": code or "", "session_token": tok})
+            if not redeemed.get("ok"):
+                log(f"      handoff refused: {redeemed.get('error')}")
+                verdict = "CROSS_SURFACE_BROKEN:handoff"
+            else:
+                log(f"      bound to {redeemed['proposal_id']} ({redeemed.get('title')})")
+
+            log("[4/6] Web session: approve that exact proposal id")
             reply = _web(web_port, "/api/chat",
                          {"message": f"approve {pid}", "session_token": tok})
             mandate_id = None
@@ -161,8 +171,8 @@ def main() -> int:
             else:
                 log(f"      NO mandate - web reply: {reply['reply'][:110]}")
 
-            if mandate_id:
-                log("[4/5] MCP executes the mandate over the wire")
+            if mandate_id and redeemed.get("ok"):
+                log("[5/6] MCP executes the mandate over the wire")
                 ex = asyncio.run(_mcp_execute(
                     f"http://127.0.0.1:{mcp_port}/mcp", mandate_id))
                 if ex.get("refused"):
@@ -170,20 +180,34 @@ def main() -> int:
                     verdict = "CROSS_SURFACE_BROKEN:execution"
                 else:
                     log(f"      receipt: {ex.get('execution_id', '?')}")
-                    verdict = "CROSS_SURFACE_OK"
-            else:
+                    second = asyncio.run(_mcp_execute(
+                        f"http://127.0.0.1:{mcp_port}/mcp", mandate_id))
+                    if not second.get("refused"):
+                        log("      SECOND EXECUTE SUCCEEDED - single-use is broken")
+                        verdict = "CROSS_SURFACE_BROKEN:single-use"
+                    else:
+                        log(f"      replay refused: {second.get('error', '')[:70]}")
+                        verdict = "CROSS_SURFACE_OK"
+            elif mandate_id is None and redeemed.get("ok"):
                 verdict = "CROSS_SURFACE_BROKEN:approval"
 
-            log("[5/5] isolation: a second web session must see nothing of it")
+            log("[6/6] isolation: a second session can neither redeem nor approve")
             tok2 = _web(web_port, "/api/session", {})["session_token"]
+            again = _web(web_port, "/api/handoff",
+                         {"code": code or "", "session_token": tok2})
+            assert not again.get("ok"), "ISOLATION FAILED: handoff code is reusable"
             r2 = _web(web_port, "/api/chat",
                       {"message": f"approve {pid}", "session_token": tok2})
             leak = any(c.get("type") == "mandate" for c in r2.get("cards", []))
             assert not leak, "ISOLATION FAILED: another session approved the proposal"
-            log("      ISOLATION_OK (second session issued no mandate)")
+            log("      ISOLATION_OK (code is one-time; second session signs nothing)")
 
             try:
-                ledger = _web(web_port, f"/api/ledger?session_token={tok}", {})
+                import urllib.request as _u
+                with _u.urlopen(
+                        f"http://127.0.0.1:{web_port}/api/ledger"
+                        f"?session_token={tok}", timeout=20) as resp:
+                    ledger = json.loads(resp.read())
                 log(f"      web-ledger entries: {len(ledger.get('entries', []))}")
             except Exception as exc:  # informational only - never mask the verdict
                 log(f"      web-ledger probe skipped: {type(exc).__name__}")

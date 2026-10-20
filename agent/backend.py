@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import threading
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -67,6 +68,57 @@ class ChatResponse(BaseModel):
 class SessionResponse(BaseModel):
     session_token: str
     workspace: str
+
+
+class HandoffRequest(BaseModel):
+    code: str
+    session_token: str | None = None
+
+
+class HandoffResponse(BaseModel):
+    ok: bool
+    proposal_id: str | None = None
+    title: str | None = None
+    error: str | None = None
+
+
+@app.post("/api/handoff", response_model=HandoffResponse)
+def redeem_handoff(req: HandoffRequest) -> HandoffResponse:
+    """Bind a proposal minted on the MCP surface to THIS web session.
+
+    The tool surface proposes; a human approves here. The bridge is a
+    one-time, 15-minute code bound to exactly one proposal id - not a shared
+    state file, and not something a client can guess. Redeeming records the
+    binding in the session's own workspace; the proposal itself stays in the
+    MCP workspace, where the mandate will be executed.
+    """
+    with _STATE_LOCK:
+        store.set_workspace(store.workspace_for_token(req.session_token))
+        try:
+            mcp_path = store.workspace_path("mcp")
+            mcp_state = store.load_state(mcp_path)
+            record = mcp_state.get("handoffs", {}).get(req.code)
+            if not record:
+                return HandoffResponse(ok=False, error="unknown handoff code")
+            if record.get("used"):
+                return HandoffResponse(ok=False, error="handoff code already used")
+            expires = datetime.fromisoformat(record["expires_at"])
+            if datetime.now(timezone.utc) > expires:
+                return HandoffResponse(ok=False, error="handoff code expired")
+            pid = record["proposal_id"]
+            proposal = mcp_state.get("proposals", {}).get(pid)
+            if not proposal or proposal.get("status") != "proposed":
+                return HandoffResponse(ok=False, error="proposal is no longer open")
+            record["used"] = True
+            record["used_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            store.save_state(mcp_state, mcp_path)
+            mine = store.load_state(None)
+            mine["handed_off"][pid] = {"workspace": "mcp", "code": req.code,
+                                       "at": record["used_at"]}
+            store.save_state(mine, None)
+            return HandoffResponse(ok=True, proposal_id=pid, title=proposal.get("title"))
+        finally:
+            store.set_workspace(None)
 
 
 @app.post("/api/session", response_model=SessionResponse)

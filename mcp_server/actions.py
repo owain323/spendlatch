@@ -150,6 +150,20 @@ def propose_action(action_id: str, state_path: Path | None = None) -> dict:
         },
     }
     state["proposals"][proposal_id] = proposal
+    handoff = None
+    if store.current_workspace() == "mcp":
+        # A proposal made by the tool surface is approved by a HUMAN on the
+        # web surface. The bridge is a one-time, short-lived code bound to
+        # this proposal - not a shared state file, and not a guessable id.
+        code = secrets.token_hex(6)
+        expires_at = _iso(_now() + timedelta(minutes=15))
+        state["handoffs"][code] = {
+            "proposal_id": proposal_id,
+            "created_at": _iso(_now()),
+            "expires_at": expires_at,
+            "used": False,
+        }
+        handoff = {"code": code, "expires_at": expires_at}
     store.save_state(state, state_path)
     ledger.record(
         "propose", proof["provider"],
@@ -157,7 +171,7 @@ def propose_action(action_id: str, state_path: Path | None = None) -> dict:
         f"proof attached) — awaiting approval from an authenticated session.",
         evidence=[action_id, proposal_id], path=state_path,
     )
-    return {**proposal, "proof": proof}
+    return {**proposal, "proof": proof, "approval_handoff": handoff}
 
 
 # ------------------------------------------------------------------ approve

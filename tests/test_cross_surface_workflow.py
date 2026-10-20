@@ -12,12 +12,9 @@ p-..."). This test pins the two properties that hold today:
 
   1. isolation: a second web session can neither see nor approve another
      workspace's proposal (the security property, asserted for real);
-  2. the documented verdict is CROSS_SURFACE_BROKEN:approval - recorded so
-     the breakage cannot silently regress further or silently disappear.
-
-When SL-002 (approval handoff) lands, the expected verdict flips to
-CROSS_SURFACE_OK and the assertion below is updated WITH the fix in the
-same commit - not before, not by relaxing this test.
+  2. the verdict is CROSS_SURFACE_OK: the MCP surface mints a one-time
+     approval handoff, the web session redeems it, the human approves, and
+     the mandate executes exactly once in the workspace it was signed for.
 """
 from __future__ import annotations
 
@@ -38,15 +35,12 @@ def _run_probe() -> subprocess.CompletedProcess:
 def test_cross_surface_isolation_holds_and_verdict_matches_documented_state():
     result = _run_probe()
     assert "ISOLATION_OK" in result.stdout, result.stdout + result.stderr
-    # The documented SL-001 finding: the loop is open at the approval step.
-    # This assertion is the pin; SL-002 flips it together with the fix.
-    assert "CROSS_SURFACE_BROKEN:approval" in result.stdout, (
-        "the cross-surface verdict changed without the documentation moving: "
-        + result.stdout[-400:])
+    assert "CROSS_SURFACE_OK" in result.stdout, (
+        "the cross-surface loop no longer closes: " + result.stdout[-500:])
 
 
 def test_cross_surface_steps_are_auditable():
     result = _run_probe()
-    for step in ("[1/5]", "[2/5]", "[3/5]", "[5/5]"):
+    for step in ("[1/6]", "[2/6]", "[3/6]", "[4/6]", "[5/6]", "[6/6]"):
         assert step in result.stdout, f"missing probe step {step}"
     assert "proposal_id = p-" in result.stdout
