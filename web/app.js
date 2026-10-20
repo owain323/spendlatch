@@ -458,7 +458,9 @@ let auditEntries = [];
 let auditFilter = "all";
 
 async function loadLedger() {
-  const res = await fetch(`/api/ledger?session_token=${encodeURIComponent(sessionToken || "")}`);
+  const res = await fetch("/api/ledger", {
+    headers: { Authorization: `Bearer ${sessionToken || ""}` },
+  });
   const data = await res.json();
   auditEntries = data.entries;
   if (ledgerCountEl) ledgerCountEl.textContent = String(auditEntries.length);
@@ -501,7 +503,9 @@ async function openAudit(filter) {
       renderAudit();
     }));
   renderAudit();
-  fetch(`/api/ledger/verify?session_token=${encodeURIComponent(sessionToken || "")}`)
+  fetch("/api/ledger/verify", {
+    headers: { Authorization: `Bearer ${sessionToken || ""}` },
+  })
     .then(r => r.json())
     .then(v => {
       auditChainEl.innerHTML = v.ok

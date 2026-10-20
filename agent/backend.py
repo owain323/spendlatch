@@ -18,13 +18,15 @@ Run:  python -m agent.backend   # serves http://127.0.0.1:8200
 
 from __future__ import annotations
 
+import os
 import threading
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -80,6 +82,40 @@ class HandoffResponse(BaseModel):
     proposal_id: str | None = None
     title: str | None = None
     error: str | None = None
+
+
+# ---------------------------------------------------------------- guards
+# A public demo endpoint is the easiest thing on the internet to hit. The
+# guards are deliberately simple and in-process: one judgement per request,
+# bounded memory, no dependency - enough to keep a judge's abusive script
+# from filling the disk with workspaces.
+MAX_BODY_BYTES = int(os.environ.get("SPENDLATCH_MAX_BODY", "32768"))
+RATE_LIMIT = int(os.environ.get("SPENDLATCH_RATE_LIMIT", "120"))       # per window
+RATE_WINDOW = float(os.environ.get("SPENDLATCH_RATE_WINDOW", "60"))    # seconds
+_rate_state: dict[str, list[float]] = {}
+_rate_lock = threading.Lock()
+
+
+@app.middleware("http")
+async def guard(request: Request, call_next):
+    # body size: reject before the app parses anything
+    length = request.headers.get("content-length")
+    if length and length.isdigit() and int(length) > MAX_BODY_BYTES:
+        return JSONResponse({"detail": "payload too large"}, status_code=413)
+    # crude per-client rate limit on state-changing routes
+    if request.method == "POST":
+        client = request.client.host if request.client else "unknown"
+        now = time.monotonic()
+        with _rate_lock:
+            hits = [t for t in _rate_state.get(client, []) if now - t < RATE_WINDOW]
+            if len(hits) >= RATE_LIMIT:
+                return JSONResponse({"detail": "too many requests"}, status_code=429)
+            hits.append(now)
+            _rate_state[client] = hits
+            if len(_rate_state) > 4096:          # bound the registry itself
+                for key in list(_rate_state)[:1024]:
+                    _rate_state.pop(key, None)
+    return await call_next(request)
 
 
 @app.post("/api/handoff", response_model=HandoffResponse)
@@ -184,11 +220,26 @@ def opening(session_id: str | None = None,
                         cards=result["cards"], stats=result.get("stats"))
 
 
+def _presented_token(request: Request, query_token: str | None) -> str | None:
+    """Bearer header first; the query form stays for old clients only.
+
+    A token in a query string lands in proxy logs, browser history and
+    diagnostics - it is a bearer credential for an approval capability, so
+    the client now sends it as a header and this is the only place that
+    reads the deprecated form.
+    """
+    header = request.headers.get("authorization", "")
+    if header.lower().startswith("bearer "):
+        return header[7:].strip()
+    return query_token
+
+
 @app.get("/api/ledger")
-def get_ledger(session_token: str | None = None) -> dict:
+def get_ledger(request: Request, session_token: str | None = None) -> dict:
     """The full decision ledger — the observability surface."""
+    token = _presented_token(request, session_token)
     with _STATE_LOCK:
-        store.set_workspace(store.workspace_for_token(session_token))
+        store.set_workspace(store.workspace_for_token(token))
         try:
             return tools.decision_ledger()
         finally:
@@ -202,10 +253,11 @@ def crossfoot_check() -> dict:
 
 
 @app.get("/api/ledger/verify")
-def verify_ledger(session_token: str | None = None) -> dict:
+def verify_ledger(request: Request, session_token: str | None = None) -> dict:
     """Re-derive the ledger hash chain - tamper-evidence as a checkable fact."""
+    token = _presented_token(request, session_token)
     with _STATE_LOCK:
-        store.set_workspace(store.workspace_for_token(session_token))
+        store.set_workspace(store.workspace_for_token(token))
         try:
             return ledger.verify_chain()
         finally:

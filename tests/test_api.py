@@ -162,3 +162,36 @@ class TestApprovalHandoff:
         assert first["ok"] is True and first["proposal_id"] == pid
         second = client.post("/api/handoff", json={"code": code, "session_token": token}).json()
         assert second["ok"] is False and "already used" in second["error"]
+
+
+# ------------------------------------- bearer token + public-demo guards
+
+@pytest.fixture()
+def clean_limits():
+    import agent.backend as backend
+    backend._rate_state.clear()
+    yield
+    backend._rate_state.clear()
+
+
+class TestTokenTransportAndGuards:
+    """The approval token is a bearer credential: header, never the URL."""
+
+    def test_ledger_accepts_the_bearer_header(self, client, clean_limits):
+        token = client.post("/api/session").json()["session_token"]
+        out = client.get("/api/ledger", headers={"Authorization": f"Bearer {token}"})
+        assert out.status_code == 200 and "entries" in out.json()
+
+    def test_oversized_body_is_rejected_before_parsing(self, client, clean_limits):
+        token = client.post("/api/session").json()["session_token"]
+        big = {"message": "x" * 40000, "session_token": token}
+        out = client.post("/api/chat", json=big)
+        assert out.status_code == 413
+
+    def test_rate_limit_returns_429(self, client, monkeypatch):
+        import agent.backend as backend
+        monkeypatch.setattr(backend, "RATE_LIMIT", 3)
+        monkeypatch.setattr(backend, "_rate_state", {})
+        codes = [client.post("/api/session").status_code for _ in range(5)]
+        assert 429 in codes, f"no rate limiting: {codes}"
+        monkeypatch.undo()

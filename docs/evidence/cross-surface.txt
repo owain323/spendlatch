@@ -1,14 +1,14 @@
 [1/6] spawning MCP server and Web backend as separate processes
-      ready: mcp :32472  web :32473  (shared data root: C:\Users\czj17751\AppData\Local\Temp\spendlatch-cross-okiofh31, no SPENDLATCH_STATE)
+      ready: mcp :57167  web :57168  (shared data root: C:\Users\czj17751\AppData\Local\Temp\spendlatch-cross-cxzakn9e, no SPENDLATCH_STATE)
 [2/6] MCP client: propose_action over the wire
-      proposal_id = p-d26adbaf  handoff = yes
+      proposal_id = p-d628afbb  handoff = yes
 [3/6] Web session: redeem the one-time approval handoff
-      bound to p-d26adbaf (Rightsize the idle EC2 instance)
+      bound to p-d628afbb (Rightsize the idle EC2 instance)
 [4/6] Web session: approve that exact proposal id
-      mandate issued: m-ebed98cc
+      mandate issued: m-84161e24
 [5/6] MCP executes the mandate over the wire
-      receipt: e-6ba6cf33
-      replay refused: mandate m-ebed98cc was already consumed — mandates are single-use
+      receipt: e-95435d7d
+      replay refused: mandate m-84161e24 was already consumed — mandates are single-use
 [6/6] isolation: a second session can neither redeem nor approve
       ISOLATION_OK (code is one-time; second session signs nothing)
       web-ledger entries: 0
