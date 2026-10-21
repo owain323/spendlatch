@@ -57,7 +57,7 @@ python tools/verify_proof.py <bundle.json>   # offline verification
 - 232 pytest tests (230 in the gate + 2 wire round-trip)
 - sealed benchmark 12/12 public, 14/14 independent, 24/24 derived invariance
 - mutation check 12/12 guards killed
-- 125 files under the integrity manifest
+- 122 files under the integrity manifest
 - cross-surface probe: CROSS_SURFACE_OK (MCP proposes -> handoff -> web
   approves -> MCP executes once -> replay refused)
 - real usage run: 10,901 requests across 137 days, 5 months
