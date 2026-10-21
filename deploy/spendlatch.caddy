@@ -1,0 +1,25 @@
+# SpendLatch public demo — the block that actually serves
+# https://spendlatch.owain32380.cn on the current host.
+#
+# The reverse proxy in production is Caddy, not nginx: /mcp must not buffer
+# (Streamable HTTP keeps a stream open), and the two `import`s below are
+# host-wide snippets that add the security headers and the CSP the web
+# surface needs. If a host does not define them, replace the imports with
+# your own header block before using this file.
+
+spendlatch.owain32380.cn {
+	import security_headers
+	import csp_inline
+
+	# Streamable HTTP: flush every write, never buffer the event stream.
+	handle /mcp* {
+		reverse_proxy 127.0.0.1:8101 {
+			flush_interval -1
+		}
+	}
+
+	# Everything else is the web app: UI, static assets, chat API.
+	handle {
+		reverse_proxy 127.0.0.1:8201
+	}
+}

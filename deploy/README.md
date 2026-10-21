@@ -8,8 +8,9 @@ single Linux VPS. The live deployment is
   which serves the web UI, the static assets, and the chat API.
 - `spendlatch-mcp.service` — the self-hosted MCP server
   (`python -m mcp_server.server`, Streamable HTTP).
-- `nginx-spendlatch.conf` — an nginx TLS+proxy variant, kept for
-  deployments that do not use Caddy (see below).
+- `spendlatch.caddy` — the reverse-proxy block that actually serves the
+  public host. Caddy terminates TLS; `/mcp` is proxied with flushing off so
+  the Streamable HTTP stream is not buffered.
 
 Both processes bind to loopback only; the reverse proxy is the only
 public face. **No provider credentials exist anywhere in the stack**:
@@ -91,8 +92,10 @@ caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl restart caddy
 ```
 
-`nginx-spendlatch.conf` in this directory is the equivalent nginx
-configuration (with certbot for certificates) if you do not run Caddy.
+`spendlatch.caddy` in this directory is the block referenced above. It
+depends on two host-wide snippets (`security_headers`, `csp_inline`); on a
+host that does not define them, replace the imports with your own header
+block before applying it.
 
 ## 4. Getting code onto the box
 

@@ -1,0 +1,27 @@
+[Unit]
+Description=SpendLatch self-hosted MCP server (Streamable HTTP, loopback only)
+After=network.target
+
+[Service]
+Type=simple
+# The service account predates the rename and is still `spendpilot`.
+# Renaming a Linux account means re-owning data/, stopping both units and
+# a usermod under load; it is deliberately not done here, and the account
+# name is the only surviving use of the old spelling.
+User=spendpilot
+Group=spendpilot
+WorkingDirectory=/opt/spendlatch
+Environment=SPENDLATCH_HOST=127.0.0.1
+Environment=SPENDLATCH_PORT=8101
+ExecStart=/opt/spendlatch/.venv/bin/python -m mcp_server.server
+Restart=on-failure
+RestartSec=3
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/spendlatch/data
+
+[Install]
+WantedBy=multi-user.target
