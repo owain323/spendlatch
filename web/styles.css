@@ -95,6 +95,14 @@ body {
 }
 .chip:hover { border-color: var(--line-strong); background: var(--accent-soft); }
 
+/* Keyboard users get a visible ring on every control. The demo is driven by
+   chips and buttons, so "which element has focus" has to be answerable. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .chat { padding: 12px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
 
 .msg { max-width: 85%; padding: 11px 15px; border-radius: 10px; line-height: 1.55; font-size: 14.5px; overflow-wrap: anywhere; }
