@@ -195,3 +195,67 @@ class TestTokenTransportAndGuards:
         codes = [client.post("/api/session").status_code for _ in range(5)]
         assert 429 in codes, f"no rate limiting: {codes}"
         monkeypatch.undo()
+
+
+# ------------------------------- the contract the browser's error path reads
+
+class TestErrorContractTheClientDependsOn:
+    """app.js turns a failed call into a sentence, and it reads `detail`.
+
+    These pin the shape, not the wording: the client maps 413/429/5xx to its
+    own copy, and falls back to `detail` for anything else. If a guard starts
+    returning HTML or an empty body, the browser would show a bare status code
+    with no explanation - so the shape is part of the contract.
+    """
+
+    def test_oversized_body_carries_a_json_detail(self, client, clean_limits):
+        token = client.post("/api/session").json()["session_token"]
+        out = client.post("/api/chat", json={"message": "x" * 40000,
+                                             "session_token": token})
+        assert out.status_code == 413
+        assert out.headers["content-type"].startswith("application/json")
+        assert out.json().get("detail")
+
+    def test_rate_limit_carries_a_json_detail(self, client, monkeypatch):
+        import agent.backend as backend
+        monkeypatch.setattr(backend, "RATE_LIMIT", 2)
+        monkeypatch.setattr(backend, "_rate_state", {})
+        last = None
+        for _ in range(4):
+            last = client.post("/api/session")
+            if last.status_code == 429:
+                break
+        assert last is not None and last.status_code == 429
+        assert last.headers["content-type"].startswith("application/json")
+        assert last.json().get("detail")
+        monkeypatch.undo()
+
+
+class TestConcurrentSessionMinting:
+    """The registry is one JSON file read-modify-write; two first-time visitors
+    arriving together must not drop one another's token."""
+
+    def test_ten_concurrent_sessions_all_survive(self):
+        import threading
+        from mcp_server import actions, store
+
+        tokens: list[str] = []
+        lock = threading.Lock()
+
+        def mint() -> None:
+            tok = actions.open_session()["session_token"]
+            with lock:
+                tokens.append(tok)
+
+        threads = [threading.Thread(target=mint) for _ in range(10)]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join()
+
+        assert len(tokens) == 10
+        assert len(set(tokens)) == 10, "two sessions minted the same token"
+        registry = store._auth_map()   # the auth file, not the workspace state
+        present = [t for t in tokens if store._token_hash(t) in registry]
+        assert len(present) == len(tokens), (
+            f"only {len(present)} of {len(tokens)} tokens reached the registry")

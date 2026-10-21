@@ -24,6 +24,7 @@ import json
 import os
 import secrets
 import tempfile
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -132,6 +133,9 @@ def _auth_map() -> dict:
     return load_state(_auth_file()).get("auth_sessions", {})
 
 
+_AUTH_LOCK = threading.Lock()
+
+
 def open_auth_session() -> dict:
     """Mint a fresh authenticated session.
 
@@ -148,17 +152,22 @@ def open_auth_session() -> dict:
     h = _token_hash(token)
     workspace = h[:12]
     auth_path = _auth_file()
-    auth = load_state(auth_path)
-    sessions = auth["auth_sessions"]
-    if len(sessions) >= MAX_AUTH_SESSIONS:
-        oldest = sorted(sessions, key=lambda k: sessions[k].get("created", ""))[:len(sessions) - MAX_AUTH_SESSIONS + 1]
-        for key in oldest:
-            sessions.pop(key, None)
-    sessions[h] = {
-        "workspace": workspace,
-        "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-    }
-    save_state(auth, auth_path)
+    # Read-modify-write on one JSON file. The HTTP layer already holds its own
+    # lock, but the registry is also reachable from scripts and from the MCP
+    # process, so the lock belongs here, at the source: two visitors arriving
+    # at the same moment must not drop one another's token.
+    with _AUTH_LOCK:
+        auth = load_state(auth_path)
+        sessions = auth["auth_sessions"]
+        if len(sessions) >= MAX_AUTH_SESSIONS:
+            oldest = sorted(sessions, key=lambda k: sessions[k].get("created", ""))[:len(sessions) - MAX_AUTH_SESSIONS + 1]
+            for key in oldest:
+                sessions.pop(key, None)
+        sessions[h] = {
+            "workspace": workspace,
+            "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+        save_state(auth, auth_path)
     return {"session_token": token, "workspace": workspace}
 
 

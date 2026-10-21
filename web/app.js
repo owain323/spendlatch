@@ -413,13 +413,47 @@ function renderStats(stats) {
   document.getElementById("stat-saving").textContent = money(realizedSaving);
 }
 
+// Every network failure used to surface as "undefined" in the transcript, or
+// as an unhandled rejection that made the button look dead: post() called
+// res.json() and the callers read data.reply without checking. A demo whose
+// most likely failure is a rate limit (429) or an oversized body (413) has to
+// say so in a sentence a person can act on.
+function humanError(status, payload) {
+  if (status === 413) return "That message is too long for the demo. Try a shorter one.";
+  if (status === 429) return "Too many requests from this browser just now. Give it a minute.";
+  if (status === 401 || status === 403) return "This session is no longer valid. Reload the page to start a fresh one.";
+  if (status >= 500) return "The server hit an error handling that. Nothing ran; the ledger is unchanged.";
+  const detail = payload && (payload.detail || payload.error);
+  return detail ? String(detail) : `The server answered ${status}. Nothing ran.`;
+}
+
 async function post(url, body) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, session_token: sessionToken }),
-  });
-  return res.json();
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 25000);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, session_token: sessionToken }),
+      signal: ctl.signal,
+    });
+    let payload = {};
+    try {
+      payload = await res.json();
+    } catch (e) {
+      payload = {};
+    }
+    if (!res.ok) return { error: humanError(res.status, payload) };
+    return payload;
+  } catch (err) {
+    return {
+      error: ctl.signal.aborted
+        ? "That took too long and was cancelled. Nothing ran; try again."
+        : "Could not reach the server. Check your connection and try again.",
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function send(text) {
@@ -427,6 +461,7 @@ async function send(text) {
   addMessage("user", text);
   inputEl.value = "";
   const data = await post("/api/chat", { message: text, session_id: sessionId });
+  if (data.error) { addMessage("agent", data.error); return; }
   sessionId = data.session_id;
   localStorage.setItem(SESSION_KEY, sessionId);
   addMessage("agent", data.reply);
@@ -675,6 +710,7 @@ document.querySelectorAll(".chip[data-say]").forEach(chip =>
 async function runAttack(kind) {
   addMessage("user", "Try to break it: " + kind);
   const data = await post(`/api/attack/${kind}`, { message: "attack", session_id: sessionId });
+  if (data.error) { addMessage("agent", data.error); return; }
   addMessage("agent", data.reply);
   speakReply(data.reply);
   addCards(data.cards);

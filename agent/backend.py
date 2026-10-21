@@ -160,8 +160,14 @@ def redeem_handoff(req: HandoffRequest) -> HandoffResponse:
 @app.post("/api/session", response_model=SessionResponse)
 def create_session() -> SessionResponse:
     """Mint an authenticated web session: its token approves actions and
-    pins its own workspace state file."""
-    return SessionResponse(**actions.open_session())
+    pins its own workspace state file.
+
+    Under the same lock as every other writer: the session registry is a
+    read-modify-write on one JSON file, so two concurrent first-time visitors
+    could otherwise drop one another's token.
+    """
+    with _STATE_LOCK:
+        return SessionResponse(**actions.open_session())
 
 
 @app.post("/api/chat", response_model=ChatResponse)

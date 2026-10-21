@@ -9,7 +9,7 @@ to the way it fails when that behavior breaks.
 | Layer | Lines | Role |
 |---|---|---|
 | Product kernel (`mcp_server/` + `agent/` + `web/`) | 4,830 | the thing being built |
-| Verification (`tests/`) | 2,560 | 227 collected pytest cases |
+| Verification (`tests/`) | 2,560 | 230 collected pytest cases |
 | Quality gates (`tools/` + `benchmarks/`) | 2,812 | what keeps the above honest |
 
 The verification layer is roughly the same size as the kernel **on purpose**:
@@ -24,7 +24,7 @@ Tests are NOT more than the kernel; they are about 47% of it.
 | `test_authorization_invariants.py` | 10 | I1-I7 end to end over the real HTTP route: no-session approval, no-mandate execution, replay, cap immutability, real expiry fixtures, cross-session binding, secret containment | Any refusal that the UI could trigger but the server would not |
 | `test_attacks.py` | 8 | The five demo attack endpoints: each refusal must come from the guard the attack targets | An attack refused "for some reason" instead of its own guard; a refusal that never reaches the ledger |
 | `test_boundaries.py` | 14 | Threat-model rows: swapped adapters under valid signatures, refusal-shaped utterances, spend denial, consumption-claim survival, proof bundles | The named boundary stops holding |
-| `test_api.py` | 22 | The web surface: opening, chat routes, session memory, cross-session "Welcome back" | The HTTP contract drifts from what the UI sends |
+| `test_api.py` | 25 | The web surface: opening, chat routes, session memory, cross-session "Welcome back" | The HTTP contract drifts from what the UI sends |
 | `test_ledger.py` | 12 | Hash-chained decision ledger: append, verify, challenge, suppression | Silence or tampering goes undetected |
 | `test_tools.py` | 62 | The analysis layer: detection, evidence, thresholds, unit economics | Analysis drifts from its documented behavior |
 | `test_planner.py` | 12 | The optional LLM planner boundary: intents are parsed, never authorized | The planner gains authority it must not have |

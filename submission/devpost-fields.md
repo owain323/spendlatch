@@ -48,16 +48,16 @@ vanilla JS, pytest, GitHub Actions, systemd on a Tencent Cloud VPS.
 ```
 git clone https://github.com/owain323/spendlatch && cd spendlatch
 pip install -e . pytest pillow
-python run_checks.py            # 225 tests, benchmark, probe, mutation, integrity
+python run_checks.py            # 230 tests, benchmark, probe, mutation, integrity
 python tools/verify_proof.py <bundle.json>   # offline verification
 ```
 
 ## Numbers to quote (verified 2026-10-21)
 
-- 225 pytest tests (223 in the gate + 2 wire round-trip)
+- 230 pytest tests (228 in the gate + 2 wire round-trip)
 - sealed benchmark 12/12 public, 14/14 independent, 24/24 derived invariance
 - mutation check 12/12 guards killed
-- 118 files under the integrity manifest
+- 125 files under the integrity manifest
 - cross-surface probe: CROSS_SURFACE_OK (MCP proposes -> handoff -> web
   approves -> MCP executes once -> replay refused)
 - real usage run: 10,901 requests across 137 days, 5 months
