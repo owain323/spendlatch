@@ -209,6 +209,12 @@ def figure1() -> tuple[str, str]:
     s.edge([(624, 516), (688, 516), (688, 744)])
     s.pill(688, 630, "decisions logged")
 
+    # The bridge the first version of this figure was missing: an MCP proposal
+    # can only become an approval on the web surface, through a one-time code.
+    s.edge([(344, 352), (328, 352), (328, 240), (312, 240)], dashed=True)
+    s.text(400, 962, "dashed: a proposal crosses to the human on a one-time handoff code",
+           12, GRAY, 400, "middle")
+
     s.text(400, 988, "Figure 1: One implementation, three surfaces; "
                      "the mandate gate decides what may act.", 14, GRAY, 400, "middle")
     alt = ("SpendLatch architecture: a web experience and MCP Apps hosts sit above one "
