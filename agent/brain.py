@@ -439,11 +439,36 @@ def handle(message: str, session_id: str, session_token: str | None = None) -> d
     # OFF by default. When it is off, a request to spend money must still be
     # refused rather than silently ignored: a spend verb plus an amount is
     # enough to reach the deterministic gate, and the denial is logged.
+    # "in order to ..." is prose, not a purchase order
+    _spend_text = re.sub(r"\bin\s+order\s+to\b", " ", text, flags=re.IGNORECASE)
     _spend = re.search(
         r"\b(buy|purchase|order|recharge|top\s*-?\s*up|upgrade|renew|provision|"
-        r"pay\s+for|charge)\b", text, re.IGNORECASE)
+        r"pay\s+for|charge)\b", _spend_text, re.IGNORECASE)
     _amt = re.search(r"(?:\$\s*([\d,]+(?:\.\d+)?)|([\d,]+(?:\.\d+)?)\s*(?:usd|dollars?))",
                      text, re.IGNORECASE)
+
+    if _spend and not _amt and not planner.enabled():
+        # No stated price -> nothing to cap -> refuse, and say why. This is the
+        # README's own example ("buy me a replacement charger"): a shopping
+        # request the product deliberately does not perform.
+        seq = ledger.record(
+            "refuse", "new spend",
+            "new spend with no stated amount - an uncapped price cannot be "
+            "approved", evidence=[text[:80]])["seq"]
+        return {
+            "reply": (
+                "Refused, and this is the boundary working. I do not shop: a "
+                "purchase with no stated price has no cap, and a cap is the "
+                "whole point. What I can do is prove a saving on a bill you "
+                "already pay, then execute exactly that action once, under a "
+                f"mandate you sign. Logged as ledger #{seq}."),
+            "cards": [refusal_card(
+                action="new spend",
+                reason="purchase request with no stated amount (nothing to cap)",
+                ledger_seq=seq,
+                policy="new spend is default-deny; an uncapped price cannot be approved")],
+        }
+
     if _spend and _amt and not planner.enabled():
         raw = (_amt.group(1) or _amt.group(2) or "").replace(",", "")
         try:

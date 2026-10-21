@@ -25,10 +25,14 @@ An agentic spend-remediation copilot for AI and cloud teams — it watches your 
 
 **"You are giving an AI permission to spend your money."**
 
-Say *"buy me a replacement charger"* and the agent will find one, prove the
-price is what it says, and then stop — because the decision is yours. What
-you sign is not "yes". It is **this much, for this, once, until this time**,
-recorded where neither of us can quietly edit it afterwards.
+Say *"buy me a replacement charger"* and it refuses. There is no stated price,
+so there is nothing to cap, and a cap is the entire point — the refusal is
+rendered as a card and written to the ledger like any other decision. Say
+*"prove the saving"* instead and it shows you the idle EC2 instance, what it
+costs per month, and the exact action that would stop it — then stops itself,
+because the decision is yours. What you sign is not "yes". It is **this much,
+for this, once, until this time**, recorded where neither of us can quietly
+edit it afterwards.
 
 > *You let it decide for you. You did not hand it an unlimited amount of your money.*
 > That gap — between "I trust you" and "here is an unbounded line of credit" —
@@ -156,12 +160,12 @@ semantics** — not "exactly once external spending".
 - **MCP Apps native** — `propose_action` links an interactive approval card
   (`ui://spendlatch/approval-card`, `text/html;profile=mcp-app`) that hosts
   render inline; the same HTML speaks the postMessage JSON-RPC bridge.
-- **The MCP server is the product** — 13 typed tools, 230 pytest tests, a sealed
+- **The MCP server is the product** — 13 typed tools, 232 pytest tests, a sealed
   benchmark; not a thin wrapper around an existing API.
 
   *The four numbers, stated so they cannot be confused:*
-  **230** pytest tests collected — of which the gate's pytest step runs
-  **228** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
+  **232** pytest tests collected — of which the gate's pytest step runs
+  **230** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
   separate MCP step, because they spawn a real server subprocess.
   On top of that: **12/12** sealed benchmark cases, **8/8** MCP wire-probe
   steps, and **12/12** mutation guards killed. Those three are not pytest
@@ -249,7 +253,7 @@ Judges: see [docs/JUDGE-REPRODUCTION.md](docs/JUDGE-REPRODUCTION.md) for the
 
 | Claim | Evidence |
 |---|---|
-| 230 automated tests pass — 228 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
+| 232 automated tests pass — 230 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
 | Detection, three honestly-labeled tiers: public regression 12/12; independent hand-written suite 14/14 (boundary values, split verdicts, cross-rule interactions); derived invariance suite 24/24 (mechanical transformations of the public fixtures — proves invariance, NOT generalization) | `benchmarks/results/metrics.json`, `benchmarks/results/independent-metrics.json`, `benchmarks/results/derived-metrics.json` |
 | Real MCP client roundtrip: protocol 2025-11-25, 13/13 tools, action loop + ui:// resource over the wire | `docs/evidence/mcp-roundtrip.txt` |
 | End-to-end web flow (9 criteria, incl. mandate replay refusal) | `docs/evidence/e2e-flow.txt` |

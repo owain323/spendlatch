@@ -156,7 +156,7 @@ Browser posts a session → posts a message → receives cards → the mandate c
 ## 4. Why these tracks
 
 ```
-Alexa+ Developer Track: agentic voice workflows need a spending boundary more than any other surface — a voice agent that can move money without a human-approved cap is the exact failure mode SpendLatch removes. The MCP surface is already built to the 2025-11-25 protocol with Streamable HTTP; the human approval surface is live. The remaining work is wiring the two together inside the Alexa+ skill flow, which is what the track credits would fund.
+Alexa+ Developer Track: agentic voice workflows need a spending boundary more than any other surface — a voice agent that can move money without a human-approved cap is the exact failure mode SpendLatch removes. The MCP surface is already built to the 2025-11-25 protocol with Streamable HTTP; the human approval surface is live. The remaining work is wiring the two together inside the Alexa+ skill flow; the MCP surface and the approval surface already speak the same protocol, so that step is integration rather than invention.
 
 Open Source mini challenge: the whole boundary — policy gate, ledger, adapters, verifier — is MIT-licensed and reproducible from https://github.com/owain323/spendlatch. Anyone can clone, run, break, and verify it.
 
@@ -167,14 +167,14 @@ Open Source mini challenge: the whole boundary — policy gate, ledger, adapters
 - **GitHub username:** `owain323`
 - **What we did:** Built and published a new open-source project: the authorization boundary between an AI agent and a consequential action. A deterministic policy gate parses every request into a spend intent and decides; a hash-chained ledger records every decision including every refusal; a mandate (HMAC-SHA256, single-use, scope-capped, 15-minute expiry) is the only thing that unlocks execution; an offline verifier re-checks an exported proof bundle against seven consistency checks. Thirteen tools are exposed over MCP 2025-11-25 / Streamable HTTP, with an MCP Apps approval card served as a `ui://` resource.
 - **Real usage, not only fixtures:** `tools/analyze_usage.py` reads a real WorkBuddy usage export (10,901 requests across 137 days, daily by model) and applies the same credits-per-call canary the demo uses. Seven of the 23 anonymized model ids carry enough history to judge, and all seven drift. The export stays local; the tool and its output are what we ship.
-- **How it works:** `python run_checks.py` runs the whole thing — 230 pytest tests (228 in the pytest step plus 2 wire round-trip tests), a sealed three-tier benchmark 12/12, an MCP wire probe 8/8, and a mutation check that kills 12 of 12 guards, a real MCP client round trip against a real server subprocess, an integrity manifest, an evidence-freshness check, and a mutation check that disables each of ten guards one at a time and requires the suite to go red. A judge can reproduce every claim in the README in about five minutes with zero credentials.
-- **Why it matters:** Agentic-payment protocols (AP2, ACP, x402) all converged on the same shape — an agent that touches money must carry proof of human authorization, bounded in scope and time, with an audit trail. That shape is infrastructure, not product surface, and it is currently rebuilt from scratch by everyone who needs it. Publishing it under MIT means the next team can adopt the boundary instead of reinventing it — and, more useful still, attack it: the refusal paths are the part worth stealing, and they only earn trust by being broken at publicly.
+- **How it works:** `python run_checks.py` runs the whole thing — 232 pytest tests (230 in the pytest step plus 2 wire round-trip tests), a sealed three-tier benchmark 12/12, an MCP wire probe 8/8, and a real MCP client round trip against a real server subprocess, a host-conformance probe run against the deployed endpoint, an integrity manifest over 125 files, an evidence-freshness check, and a mutation check that deletes each of twelve guards one at a time and requires the suite to go red. A judge can reproduce every claim in the README in about five minutes with zero credentials.
+- **Why it matters:** Agentic-payment protocols (AP2, ACP, x402) all converged on the same shape — an agent that touches money must carry proof of human authorization, bounded in scope and time, with an audit trail. That shape is infrastructure, not product surface, and it is currently rebuilt from scratch by everyone who needs it. Publishing it under MIT means the next team can adopt the boundary instead of reinventing it — and, more useful still, attack it: the refusal paths are the part worth stealing, and they only earn trust by being broken in public.
 ```
 
 ---
 
 ## 5. Fields to fill at submission time
 
-- **Video link** — added when the final cut is ready.
+- **Video link** — the cut is finished (2:35, 1280x720); the URL is added once it is uploaded to YouTube or Vimeo.
 - **Third Product Feedback set** — added when the Alexa+ integration runs live.
 - **Built with** — Python 3.11+, FastAPI, MCP SDK (2025-11-25), Streamable HTTP, vanilla JS, pytest, GitHub Actions

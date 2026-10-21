@@ -267,3 +267,30 @@ def test_old_proof_bundle_still_verifies_after_later_actions(tmp_path):
     assert result.returncode == 0, (
         "an exported proof stopped verifying after later executions:\n" + result.stdout
     )
+
+
+# --- T14: a purchase with no price is refused, not shrugged off -----------
+
+
+def test_purchase_without_an_amount_is_refused_and_logged():
+    """The README's own example. "buy me a replacement charger" states no
+    price, so there is nothing to cap - which is a reason to refuse harder,
+    not to fall through to a paragraph about bills."""
+    from agent import brain
+    token = actions.open_session()["session_token"]
+    out = brain.handle("buy me a replacement charger", "sess-noamt", session_token=token)
+    card = (out.get("cards") or [{}])[0]
+    assert card.get("type") == "denied", out
+    assert card.get("ledger_seq"), "the refusal was not recorded"
+    assert "cap" in " ".join(card.get("reasons") or []).lower()
+    assert actions.mandate_status()["mandates"] == []
+
+
+def test_prose_containing_order_does_not_trip_the_spend_gate():
+    """"in order to ..." is prose. A gate that refuses it is a gate people
+    learn to ignore."""
+    from agent import brain
+    out = brain.handle("in order to save money, what is unusual?", "sess-prose")
+    card = (out.get("cards") or [{}])[0]
+    assert card.get("type") != "denied", out
+    assert card.get("type") in {"anomaly", "saving", None}, card.get("type")
