@@ -145,6 +145,12 @@ def main() -> int:
           run([sys.executable, "tools/mcp_roundtrip.py"]))
 
     ts = stamp()
+    write("host-conformance.txt",
+          f"# Host conformance {ts}\n"
+          "# generator: tools/refresh_evidence.py (tools/host_conformance.py - a host's view, over the wire)",
+          run([sys.executable, "tools/host_conformance.py"]))
+
+    ts = stamp()
     write("mcp-handshake.txt",
           f"# MCP initialize handshake over Streamable HTTP\n# captured {ts} by tools/refresh_evidence.py against a spawned server (isolated state)",
           capture_handshake())

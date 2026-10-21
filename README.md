@@ -12,7 +12,7 @@ providers are simulated; no credentials exist anywhere.
 |---|---|
 | Protocol | MCP 2025-11-25 (the track minimum) over Streamable HTTP |
 | SDK | mcp>=1.12,<2 - pinned: mcp-sdk 2.0.0 removed mcp.server.fastmcp (upgrade = boot failure) |
-| Verified | against our own wire round-trip probe (`tools/mcp_roundtrip.py`) — a real client against a real server subprocess; not a probe against Alexa+ itself |
+| Verified | against our own wire round-trip probe (`tools/mcp_roundtrip.py`) and a host-conformance probe (`tools/host_conformance.py`) — real clients against a real server; not a probe against Alexa+ itself, whose toolkits are not exposed to participants |
 | Upgrade path | 2026-07-28 revision (MCPServer rename, stateless model) planned post-hackathon - the legacy negotiation path is a safety valve, not a permanent home |
 
 **The authorization boundary between an AI agent and a consequential action.**
@@ -156,12 +156,12 @@ semantics** — not "exactly once external spending".
 - **MCP Apps native** — `propose_action` links an interactive approval card
   (`ui://spendlatch/approval-card`, `text/html;profile=mcp-app`) that hosts
   render inline; the same HTML speaks the postMessage JSON-RPC bridge.
-- **The MCP server is the product** — 13 typed tools, 225 pytest tests, a sealed
+- **The MCP server is the product** — 13 typed tools, 227 pytest tests, a sealed
   benchmark; not a thin wrapper around an existing API.
 
   *The four numbers, stated so they cannot be confused:*
-  **225** pytest tests collected — of which the gate's pytest step runs
-  **223** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
+  **227** pytest tests collected — of which the gate's pytest step runs
+  **225** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
   separate MCP step, because they spawn a real server subprocess.
   On top of that: **12/12** sealed benchmark cases, **8/8** MCP wire-probe
   steps, and **12/12** mutation guards killed. Those three are not pytest
@@ -249,7 +249,7 @@ Judges: see [docs/JUDGE-REPRODUCTION.md](docs/JUDGE-REPRODUCTION.md) for the
 
 | Claim | Evidence |
 |---|---|
-| 225 automated tests pass — 223 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
+| 227 automated tests pass — 225 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
 | Detection, three honestly-labeled tiers: public regression 12/12; independent hand-written suite 14/14 (boundary values, split verdicts, cross-rule interactions); derived invariance suite 24/24 (mechanical transformations of the public fixtures — proves invariance, NOT generalization) | `benchmarks/results/metrics.json`, `benchmarks/results/independent-metrics.json`, `benchmarks/results/derived-metrics.json` |
 | Real MCP client roundtrip: protocol 2025-11-25, 13/13 tools, action loop + ui:// resource over the wire | `docs/evidence/mcp-roundtrip.txt` |
 | End-to-end web flow (9 criteria, incl. mandate replay refusal) | `docs/evidence/e2e-flow.txt` |
@@ -269,6 +269,33 @@ and 5 months** from a WorkBuddy usage export. Of the 23 anonymized model
 ids, seven carry at least three months of history, and every one of those
 seven shows credits-per-call drift somewhere in the window. The export itself stays local - what ships is the tool and its
 output, because the aggregate is the owner's usage.
+
+## The Amazon track: what is real, and what is simulated
+
+The track accepts two paths, and this project takes the first one and builds
+the second:
+
+1. **A self-hosted MCP server over Streamable HTTP** - the real integration,
+   and it runs. `python -m mcp_server.server` serves `/mcp`; the initialize
+   handshake negotiates **2025-11-25**; thirteen typed tools are exposed with
+   the safety hints a host needs (`readOnlyHint`, `destructiveHint`,
+   `idempotentHint`, `openWorldHint`); the approval card is a real `ui://`
+   MCP Apps resource. A host that is not ours can mount it from the public
+   endpoint, and that is what `tools/host_conformance.py --url
+   https://spendlatch.owain32380.cn/mcp` checks - protocol, tool contracts,
+   hints, the UI resource, and that refusals arrive as content a host can
+   render rather than transport errors.
+2. **A simulated Alexa+ experience**, which the rules allow as the alternate
+   path, and which is what the web surface is.
+
+What is **not** real, and cannot be from here: an Agent Skill mounted inside
+Alexa+ itself. The Alexa+ toolkits are not exposed to participants - that is
+precisely why the track offers the simulated-experience path - so no entrant
+can attach one. The AWS adapter is simulated by design as well; no provider
+account is touched. `tools/aws_smoke.py` is the one-command path to a real
+Bedrock call the moment credentials exist: today it exits 3 with UNAVAILABLE
+and writes **no** evidence file, because a run that never reached Bedrock must
+not leave an artifact that could be read as proof.
 
 ## What "simulated" covers - and what it does not
 

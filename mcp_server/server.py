@@ -16,6 +16,7 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
+from mcp.types import ToolAnnotations
 
 from . import actions, tools
 
@@ -40,6 +41,28 @@ _TRANSPORT_SECURITY = TransportSecuritySettings(
     ],
 )
 
+def _hints(*, read_only: bool, destructive: bool = False,
+           idempotent: bool = True, open_world: bool = False) -> ToolAnnotations:
+    """Host-facing safety hints (MCP tool annotations).
+
+    They describe what the tool DOES to the world, so a host can decide
+    whether to confirm before calling it:
+
+      read_only   - writes nothing (no state, no ledger, no money)
+      destructive - authorizes or performs a consequential action
+      idempotent  - calling it twice has the same effect as calling it once
+      open_world  - reaches beyond this system (all adapters are simulated,
+                    so every tool here is closed-world)
+
+    The table is asserted over the wire by tools/host_conformance.py, so a
+    hint that drifts from behaviour turns that probe red.
+    """
+    return ToolAnnotations(readOnlyHint=read_only,
+                           destructiveHint=destructive,
+                           idempotentHint=idempotent,
+                           openWorldHint=open_world)
+
+
 mcp = FastMCP(
     "spendlatch",
     instructions=(
@@ -63,13 +86,15 @@ mcp = FastMCP(
 )
 
 
-@mcp.tool()
+@mcp.tool(title="Spending overview",
+          annotations=_hints(read_only=True))
 def spending_overview(month: str | None = None) -> dict:
     """Totals per provider and per category for a month, with month-over-month deltas."""
     return tools.spending_overview(month)
 
 
-@mcp.tool()
+@mcp.tool(title="Detect anomalies",
+          annotations=_hints(read_only=False, idempotent=False))
 def detect_anomalies(include_previous: bool = True) -> dict:
     """Find spend spikes, trial conversions, zombie subscriptions, and
     cost-per-task drift. Confidence is computed from named evidence signals;
@@ -81,46 +106,53 @@ def detect_anomalies(include_previous: bool = True) -> dict:
     return tools.detect_anomalies(include_previous=include_previous)
 
 
-@mcp.tool()
+@mcp.tool(title="Simulate a saving",
+          annotations=_hints(read_only=True))
 def simulate_saving(action_id: str) -> dict:
     """Prove a saving action before proposing it: before/after scenario estimate,
     confidence, risk, and the evidence chain. Not a realized saving."""
     return tools.simulate_saving(action_id)
 
 
-@mcp.tool()
+@mcp.tool(title="Set a budget",
+          annotations=_hints(read_only=False))
 def set_budget(category: str, monthly_limit: float) -> dict:
     """Persist a monthly budget for a category. Survives across sessions."""
     return tools.set_budget(category, monthly_limit)
 
 
-@mcp.tool()
+@mcp.tool(title="Budget status",
+          annotations=_hints(read_only=True))
 def budget_status() -> dict:
     """All budgets versus current-month spend with ok/warn/over status."""
     return tools.budget_status()
 
 
-@mcp.tool()
+@mcp.tool(title="List subscriptions",
+          annotations=_hints(read_only=True))
 def list_subscriptions() -> dict:
     """Recurring subscriptions with usage flags (zombie detection)."""
     return tools.list_subscriptions()
 
 
-@mcp.tool()
+@mcp.tool(title="Unit economics",
+          annotations=_hints(read_only=True))
 def unit_economics() -> dict:
     """Cost per 1K tasks per AI provider with drift detection — the canary metric
     (cost-per-task drift warns before the total-spend smoke alarm)."""
     return tools.unit_economics()
 
 
-@mcp.tool()
+@mcp.tool(title="Proactive briefing",
+          annotations=_hints(read_only=False, idempotent=False))
 def proactive_briefing() -> dict:
     """The agent's unprompted opening: anomalies, proof previews, saving potential,
     and a disclosure of what it deliberately held back."""
     return tools.proactive_briefing()
 
 
-@mcp.tool()
+@mcp.tool(title="Decision ledger",
+          annotations=_hints(read_only=True))
 def decision_ledger() -> dict:
     """The full decision trail: every alert, suppression, hold, refusal, budget
     change, and human challenge — with one-line reasons. Silence is auditable."""
@@ -133,7 +165,9 @@ def decision_ledger() -> dict:
 # in scope and time, and leaves an audit trail. propose -> approve (signed
 # mandate) -> execute (adapter runs only through a valid mandate).
 
-@mcp.tool(meta={"ui": {"resourceUri": APPROVAL_CARD_URI}})
+@mcp.tool(title="Propose an action",
+          annotations=_hints(read_only=False, idempotent=False),
+          meta={"ui": {"resourceUri": APPROVAL_CARD_URI}})
 def propose_action(action_id: str) -> dict:
     """Put a proven saving action on the table as a bounded proposal.
     Hosts that implement MCP Apps render the linked approval card
@@ -141,7 +175,8 @@ def propose_action(action_id: str) -> dict:
     return actions.propose_action(action_id)
 
 
-@mcp.tool()
+@mcp.tool(title="Approve an action (refuses by design)",
+          annotations=_hints(read_only=False, destructive=True, idempotent=False))
 def approve_action(proposal_id: str) -> dict:
     """Refuses, by design: approval requires an authenticated web session.
 
@@ -153,7 +188,8 @@ def approve_action(proposal_id: str) -> dict:
     return actions.approve_action(proposal_id)
 
 
-@mcp.tool()
+@mcp.tool(title="Execute a mandate",
+          annotations=_hints(read_only=False, destructive=True, idempotent=False))
 def execute_action(mandate_id: str) -> dict:
     """Run the provider adapter ONLY through a valid mandate: signature,
     expiry, single-use, and scope drift are all verified; every refusal is
@@ -161,7 +197,8 @@ def execute_action(mandate_id: str) -> dict:
     return actions.execute_action(mandate_id)
 
 
-@mcp.tool()
+@mcp.tool(title="Mandate status",
+          annotations=_hints(read_only=True))
 def mandate_status() -> dict:
     """All proposals, mandates, and receipts — the action accountability view."""
     return actions.mandate_status()

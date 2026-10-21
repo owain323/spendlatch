@@ -59,6 +59,7 @@ SOURCES = {
     "docs/evidence/independent-metrics.json": ANALYSIS,
     "docs/evidence/mcp-roundtrip.txt": ["tools/mcp_roundtrip.py", "mcp_server"],
     "docs/evidence/mcp-handshake.txt": ["mcp_server/server.py"],
+    "docs/evidence/host-conformance.txt": ["tools/host_conformance.py", "mcp_server"],
     "docs/evidence/e2e-flow.txt": ["tools/e2e_flow.py", "agent", "mcp_server", "web"],
     # Timestamp-exempt, but the mapping is still recorded: it says which code
     # would invalidate the artifact if a human re-runs the generator.

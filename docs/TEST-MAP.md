@@ -8,9 +8,9 @@ to the way it fails when that behavior breaks.
 
 | Layer | Lines | Role |
 |---|---|---|
-| Product kernel (`mcp_server/` + `agent/` + `web/`) | 4,509 | the thing being built |
-| Verification (`tests/`) | 2,300 | 225 collected pytest cases |
-| Quality gates (`tools/` + `benchmarks/`) | 2,175 | what keeps the above honest |
+| Product kernel (`mcp_server/` + `agent/` + `web/`) | 4,830 | the thing being built |
+| Verification (`tests/`) | 2,560 | 227 collected pytest cases |
+| Quality gates (`tools/` + `benchmarks/`) | 2,812 | what keeps the above honest |
 
 The verification layer is roughly the same size as the kernel **on purpose**:
 the product moves money under a mandate, and the guard code is the product.
@@ -34,6 +34,7 @@ Tests are NOT more than the kernel; they are about 47% of it.
 | `test_verify.py` | 4 | Offline proof-bundle verification | A bundle that verifies without matching state |
 | `test_seam.py` | 1 | The execute->record seam: a crash after the adapter ran must not re-arm the mandate | A double execution after a crash |
 | `test_approve_binding.py` | 4 |
+| `test_host_conformance.py` | 2 | A host's view: protocol, tool contracts, safety hints, credential-free arguments, the ui:// card, refusals as content | Hint drift is invisible to a host, and this is the only place it turns red |
 | `test_cross_surface_workflow.py` | 2 |
 | `test_mcp_roundtrip.py` | 2 | The real wire: protocol negotiation, tool listing, full loop, refusal over the wire, MCP Apps resource | Protocol drift a mock would hide |
 

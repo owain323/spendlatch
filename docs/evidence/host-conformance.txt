@@ -1,0 +1,12 @@
+# Host conformance 2026-10-21T08:55:13Z
+# generator: tools/refresh_evidence.py (tools/host_conformance.py - a host's view, over the wire)
+
+host conformance: what a third-party host can rely on
+[1/1] spawning server on 127.0.0.1:57884 (isolated state)
+      ready in 1.5s
+      server: spendlatch 1.30.0
+      protocol 2025-11-25; tools=True resources=True
+      13 tools
+      card: 7126 chars, mcp-app profile, bridge present
+      refusals render as content (a host can show them), not transport errors
+HOST_CONFORMANCE_OK

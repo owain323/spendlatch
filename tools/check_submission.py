@@ -55,9 +55,26 @@ def _distance(a: str, b: str) -> int:
 
 
 def registered_tools() -> set[str]:
-    src = SERVER.read_text(encoding="utf-8")
-    # match any decorator form, including one carrying metadata
-    return set(re.findall(r"@mcp\.tool[^\n]*\n(?:[^\n]*\n)?def (\w+)", src))
+    """Tool names as the server actually registers them.
+
+    Parsed with ast, not a line-shaped regex: a regex that assumes "decorator
+    on one line, def on the next" stops seeing a tool the moment its decorator
+    grows (metadata, annotations). That is worse than a false positive - the
+    gate then reports a real tool as unregistered, which is exactly what
+    happened when host-facing annotations were added.
+    """
+    import ast
+
+    tree = ast.parse(SERVER.read_text(encoding="utf-8"))
+    names: set[str] = set()
+    for node in tree.body:
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        for dec in node.decorator_list:
+            target = dec.func if isinstance(dec, ast.Call) else dec
+            if isinstance(target, ast.Attribute) and target.attr == "tool":
+                names.add(node.name)
+    return names
 
 
 def repo_lacks(word: str) -> bool:
