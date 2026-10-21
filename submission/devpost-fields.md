@@ -16,7 +16,7 @@
 - **Repo:** https://github.com/owain323/spendlatch
 - **Live demo:** https://spendlatch.owain32380.cn
 - **MCP endpoint:** https://spendlatch.owain32380.cn/mcp (2025-11-25, Streamable HTTP)
-- **Video:** <<VIDEO_URL>> (paste the YouTube/Vimeo link after upload)
+- **Video:** https://youtu.be/QvWt17Li7U8 (public, 2:37)
 
 ## Short description (for the card, ~2 lines)
 

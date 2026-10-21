@@ -175,6 +175,6 @@ Open Source mini challenge: the whole boundary — policy gate, ledger, adapters
 
 ## 5. Fields to fill at submission time
 
-- **Video link** — the cut is finished (2:37, 1280x720); the URL is added once it is uploaded to YouTube or Vimeo.
+- **Video link** — https://youtu.be/QvWt17Li7U8 (public, 2:37, 1280x720)
 - **Product feedback** — four tool entries are written below (web chat, MCP server, MCP Python SDK, FastAPI). A fifth set will be added if the Alexa+ skill runtime ever becomes available to entrants; it is not, so nothing here claims it ran.
 - **Built with** — Python 3.11+, FastAPI, MCP SDK (2025-11-25), Streamable HTTP, vanilla JS, pytest, GitHub Actions

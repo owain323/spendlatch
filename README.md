@@ -6,6 +6,8 @@
 MCP endpoint (`/mcp`, Streamable HTTP) are both served publicly. All
 providers are simulated; no credentials exist anywhere.
 
+**Demo video (2:37):** https://youtu.be/QvWt17Li7U8
+
 **MCP protocol & compatibility**
 
 | | |
