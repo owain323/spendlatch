@@ -46,12 +46,19 @@ function esc(s) {
   return d.innerHTML;
 }
 
-function addMessage(role, text) {
+// Pinned-to-bottom only when the reader is already there. Unconditionally
+// scrolling meant the page opened at the bottom of the briefing: the first
+// thing a visitor saw was a row of cards sliced in half at the top edge.
+function atBottom() {
+  return chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 120;
+}
+
+function addMessage(role, text, force) {
   const div = document.createElement("div");
   div.className = "msg " + role;
   div.textContent = text;
   chatEl.appendChild(div);
-  chatEl.scrollTop = chatEl.scrollHeight;
+  if (force || atBottom()) chatEl.scrollTop = chatEl.scrollHeight;
 }
 
 function evidenceHTML(items) {
@@ -398,7 +405,7 @@ function addCards(cards) {
   row.className = "card-grid";
   row.innerHTML = cards.map(cardHTML).join("");
   chatEl.appendChild(row);
-  chatEl.scrollTop = chatEl.scrollHeight;
+  if (atBottom()) chatEl.scrollTop = chatEl.scrollHeight;
 }
 
 function renderStats(stats) {
@@ -458,7 +465,7 @@ async function post(url, body) {
 
 async function send(text) {
   if (!text.trim()) return;
-  addMessage("user", text);
+  addMessage("user", text, true);
   inputEl.value = "";
   const data = await post("/api/chat", { message: text, session_id: sessionId });
   if (data.error) { addMessage("agent", data.error); return; }
