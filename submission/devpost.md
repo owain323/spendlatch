@@ -31,7 +31,7 @@ SpendLatch is the authorization boundary between an AI agent and a consequential
 
 ### The boundary, stated as seven invariants
 
-"We take this seriously" is not checkable. This is:
+Seven invariants, each one checkable against the repository:
 
 1. **Approval and execution are different surfaces.** The MCP tool surface cannot approve its own proposals — it is refused and logged. A human binds a proposal to their web session with a one-time handoff code, then approves it by id.
 2. **No mandate, no motion.** An action without a valid mandate is refused, never queued.

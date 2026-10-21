@@ -15,7 +15,7 @@ providers are simulated; no credentials exist anywhere.
 | Protocol | MCP 2025-11-25 (the track minimum) over Streamable HTTP |
 | SDK | mcp>=1.12,<2 - pinned: mcp-sdk 2.0.0 removed mcp.server.fastmcp (upgrade = boot failure) |
 | Verified | against our own wire round-trip probe (`tools/mcp_roundtrip.py`) and a host-conformance probe (`tools/host_conformance.py`) — real clients against a real server; not a probe against Alexa+ itself, whose toolkits are not exposed to participants |
-| Upgrade path | 2026-07-28 revision (MCPServer rename, stateless model) planned post-hackathon - the legacy negotiation path is a safety valve, not a permanent home |
+| Upgrade path | 2026-07-28 revision (MCPServer rename, stateless model) planned post-hackathon |
 
 **The authorization boundary between an AI agent and a consequential action.**
 
@@ -45,10 +45,9 @@ layer is a self-hosted **MCP server over Streamable HTTP** (spec 2025-11-25)
 with an **MCP Apps** approval surface (SEP-1865); the web app is a
 **simulated Alexa+ experience** — structured cards, spoken replies, voice
 input where the browser exposes `SpeechRecognition`, and state that survives
-across sessions. **Voice is progressive enhancement as of this commit, not
-yet the primary path**: the mic button only appears where `SpeechRecognition`
-exists (Chromium-family today), and reply speech is a toggle that starts off.
-Making it voice-first is tracked work, not a shipped claim.
+across sessions. **Voice is progressive enhancement**: the mic button appears
+where `SpeechRecognition` exists (Chromium-family today), and reply speech is a
+toggle that starts off.
 
 ---
 
@@ -163,7 +162,7 @@ semantics** — not "exactly once external spending".
   (`ui://spendlatch/approval-card`, `text/html;profile=mcp-app`) that hosts
   render inline; the same HTML speaks the postMessage JSON-RPC bridge.
 - **The MCP server is the product** — 13 typed tools, 232 pytest tests, a sealed
-  benchmark; not a thin wrapper around an existing API.
+  benchmark.
 
   *The four numbers, stated so they cannot be confused:*
   **232** pytest tests collected — of which the gate's pytest step runs
