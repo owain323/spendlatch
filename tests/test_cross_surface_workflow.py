@@ -42,5 +42,9 @@ def test_cross_surface_isolation_holds_and_verdict_matches_documented_state():
 def test_cross_surface_steps_are_auditable():
     result = _run_probe()
     for step in ("[1/6]", "[2/6]", "[3/6]", "[4/6]", "[5/6]", "[6/6]"):
-        assert step in result.stdout, f"missing probe step {step}"
+        assert step in result.stdout, " ; ".join([
+            f"missing probe step {step}",
+            "stdout: " + result.stdout[-1200:].replace("\n", " / "),
+            "stderr: " + result.stderr[-1600:].replace("\n", " / "),
+        ])
     assert "proposal_id = p-" in result.stdout

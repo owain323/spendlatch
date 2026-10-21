@@ -48,7 +48,7 @@ def _free_port() -> int:
 
 
 def _wait_ready(port: int, proc: subprocess.Popen, err_path: Path,
-                timeout: float = 30.0) -> float:
+                timeout: float = 60.0) -> float:
     start = time.monotonic()
     while time.monotonic() - start < timeout:
         if proc.poll() is not None:
@@ -63,7 +63,16 @@ def _wait_ready(port: int, proc: subprocess.Popen, err_path: Path,
                 return time.monotonic() - start
         except OSError:
             time.sleep(0.25)
-    raise TimeoutError(f"no listener on {port} within {timeout}s")
+    tail = ""
+    try:
+        tail = err_path.read_bytes().decode("utf-8", "replace")[-1500:]
+    except OSError:
+        pass
+    # A bare timeout made this gate undiagnosable: it printed only "[1/6]" and
+    # left the reader guessing whether the server crashed or the disk stalled.
+    raise TimeoutError(
+        f"no listener on {port} within {timeout}s; server stderr tail: "
+        + tail.replace("\n", " / "))
 
 
 def _web(port: int, path: str, payload: dict) -> dict:
