@@ -313,12 +313,10 @@ def main() -> int:
     for name, build in figures.items():
         svg, alt = build()
         (OUT / f"{name}.svg").write_text(svg, encoding="utf-8")
-        # newline="
-": the integrity manifest hashes bytes; a Windows
-        # checkout would otherwise write CRLF no Linux clone can reproduce.
-        (OUT / f"{name}.alt.txt").write_text(alt + "
-", encoding="utf-8", newline="
-")
+        # newline is pinned: the integrity manifest hashes bytes, and a
+        # Windows checkout would otherwise write CRLF that no Linux clone
+        # (CI, or a judge) can reproduce.
+        (OUT / f"{name}.alt.txt").write_text(alt + "\n", encoding="utf-8", newline="\n")
         print(f"wrote {name}.svg + .alt.txt")
     print("export PNG @2x: msedge --headless --force-device-scale-factor=2 "
           "--screenshot=<name>.png --window-size=800,<H> file:///<name>.svg")
