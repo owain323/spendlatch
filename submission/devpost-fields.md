@@ -16,7 +16,7 @@
 - **Repo:** https://github.com/owain323/spendlatch
 - **Live demo:** https://spendlatch.owain32380.cn
 - **MCP endpoint:** https://spendlatch.owain32380.cn/mcp (2025-11-25, Streamable HTTP)
-- **Video:** [paste YouTube/Vimeo URL after upload]
+- **Video:** <<VIDEO_URL>> (paste the YouTube/Vimeo link after upload)
 
 ## Short description (for the card, ~2 lines)
 
@@ -76,7 +76,7 @@ steps, expected vs actual, workaround and an actionable suggestion.
 ## Before Submit (checklist)
 
 - [ ] Video URL is public, on YouTube or Vimeo, and in English
-- [ ] The cut is 2:35.6 - the rule is "should be less than three (3) minutes",
+- [ ] The cut is 2:37.0 - the rule is "should be less than three (3) minutes",
       and judges are only guaranteed to watch the first three
 - [ ] Repo is public with LICENSE visible in the About area
 - [ ] Demo link loads from a logged-out browser
