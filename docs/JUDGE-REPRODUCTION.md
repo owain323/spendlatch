@@ -9,9 +9,9 @@ Zero credentials required. Expected total time: under 5 minutes.
 # 1. Python >= 3.11; clone the repo, enter it
 pip install -e .          # or: pip install mcp fastapi uvicorn pytest
 
-# 2. Test suite + language gate
+# 2. Test suite
 python run_checks.py
-# PASS criteria: all tests pass; "language gate: OK"
+# PASS criteria: all tests pass; "ALL GATES GREEN"
 
 # 3. Sealed benchmark
 # three benchmark tiers (public fixtures / derived invariance suite / independent cases)

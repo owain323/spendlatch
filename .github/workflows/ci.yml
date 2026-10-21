@@ -23,7 +23,7 @@ jobs:
 
       # The same six gates a judge runs locally: pytest, sealed benchmark,
       # MCP roundtrip over the wire (a real client against a real server
-      # subprocess), whole-repo SHA256 integrity manifest, evidence freshness
-      # (evidence must not predate the code it describes), pure-English scan.
+      # subprocess), whole-repo SHA256 integrity manifest, and evidence
+      # freshness (evidence must not predate the code it describes).
       - name: Run all quality gates
         run: python run_checks.py

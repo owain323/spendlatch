@@ -70,8 +70,8 @@ regenerate: `python tools/make_diagrams.py`
   24-case derived invariance suite (mechanical transformations — invariance,
   not generalization). Predictions written to disk before gold labels are
   opened. Reuses the same `analyze_dataset` the product runs.
-- **Quality gates** (`run_checks.py`) — one command: pytest (100) + sealed
-  benchmark + MCP wire roundtrip + SHA256 integrity + language gate.
+- **Quality gates** (`run_checks.py`) — one command: pytest (232) + sealed
+  benchmark + MCP wire roundtrip + SHA256 integrity.
 
 ---
 
