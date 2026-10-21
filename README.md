@@ -8,6 +8,8 @@ providers are simulated; no credentials exist anywhere.
 
 **Demo video (2:37):** https://youtu.be/QvWt17Li7U8
 
+**Hackathon entry (Devpost):** https://devpost.com/software/spendlatch - Built, Ship, Shape: Amazon Developer Hackathon, Alexa+ track + Open Source mini challenge.
+
 **MCP protocol & compatibility**
 
 | | |
