@@ -1,4 +1,4 @@
-# pytest run 2026-10-20T04:15:01Z
+# pytest run 2026-10-21T06:50:39Z
 # generator: tools/refresh_evidence.py (pytest tests -q)
 
 ........................................................................ [ 32%]
@@ -11,4 +11,4 @@
     from starlette.testclient import TestClient as TestClient  # noqa
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-225 passed, 1 warning in 39.60s
+225 passed, 1 warning in 39.55s

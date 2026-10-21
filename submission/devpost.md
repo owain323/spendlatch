@@ -27,13 +27,13 @@ I kept asking AI assistants to do things for me — move money, buy things, run 
 
 ### What it does
 
-SpendLatch is the authorization boundary between an AI agent and a consequential action. The agent watches spending data, proves a saving opportunity with evidence, and proposes an exact action — then stops. Nothing runs until a human approves a signed mandate: this exact action, on this provider, capped at this dollar amount, once, for fifteen minutes. If the request no longer matches the signed proof, it is rejected. Replaying the mandate fails — the nonce is single-use. Asking the agent to approve itself through MCP is refused and logged. Every approval exports a proof bundle that can be verified offline, without trusting the running system.
+SpendLatch is the authorization boundary between an AI agent and a consequential action. The agent watches spending data, proves a saving opportunity with evidence, and proposes an exact action — then stops. Nothing runs until a human approves a signed mandate: this exact action, on this provider, capped at this dollar amount, once, for fifteen minutes. If the request no longer matches the signed proof, it is rejected. Replaying the mandate fails — the nonce is single-use. Asking the agent to approve itself through MCP is refused and logged. A proposal made on the tool surface crosses to the human on a one-time, fifteen-minute handoff code, so the agent can propose and the person can approve without either side sharing a state file. Every approval exports a proof bundle that can be verified offline, without trusting the running system.
 
 ### The boundary, stated as seven invariants
 
 "We take this seriously" is not checkable. This is:
 
-1. **Approval and execution are different surfaces.** The MCP tool surface cannot approve its own proposals — it is refused and logged.
+1. **Approval and execution are different surfaces.** The MCP tool surface cannot approve its own proposals — it is refused and logged. A human binds a proposal to their web session with a one-time handoff code, then approves it by id.
 2. **No mandate, no motion.** An action without a valid mandate is refused, never queued.
 3. **A mandate is single-use**, and single-use is not bookkeeping: it lives outside the bounded ledger, so log trimming or a status rewind cannot re-arm a spent mandate.
 4. **An issued mandate is immutable.** Raise the cap after approval and the signature breaks — it becomes an unsigned mandate, not a bigger one.
@@ -166,6 +166,7 @@ Open Source mini challenge: the whole boundary — policy gate, ledger, adapters
 - **Contribution URL:** https://github.com/owain323/spendlatch (new repository, created 2026-09-18 — inside the hackathon window)
 - **GitHub username:** `owain323`
 - **What we did:** Built and published a new open-source project: the authorization boundary between an AI agent and a consequential action. A deterministic policy gate parses every request into a spend intent and decides; a hash-chained ledger records every decision including every refusal; a mandate (HMAC-SHA256, single-use, scope-capped, 15-minute expiry) is the only thing that unlocks execution; an offline verifier re-checks an exported proof bundle against seven consistency checks. Thirteen tools are exposed over MCP 2025-11-25 / Streamable HTTP, with an MCP Apps approval card served as a `ui://` resource.
+- **Real usage, not only fixtures:** `tools/analyze_usage.py` reads a real WorkBuddy usage export (10,901 requests across 137 days, daily by model) and applies the same credits-per-call canary the demo uses. The export stays local; the tool and its output are what we ship.
 - **How it works:** `python run_checks.py` runs the whole thing — 225 pytest tests (223 in the pytest step plus 2 wire round-trip tests), a sealed three-tier benchmark 12/12, an MCP wire probe 8/8, and a mutation check that kills 12 of 12 guards, a real MCP client round trip against a real server subprocess, an integrity manifest, an evidence-freshness check, and a mutation check that disables each of ten guards one at a time and requires the suite to go red. A judge can reproduce every claim in the README in about five minutes with zero credentials.
 - **Why it matters:** Agentic-payment protocols (AP2, ACP, x402) all converged on the same shape — an agent that touches money must carry proof of human authorization, bounded in scope and time, with an audit trail. That shape is infrastructure, not product surface, and it is currently rebuilt from scratch by everyone who needs it. Publishing it under MIT means the next team can adopt the boundary instead of reinventing it — and, more useful still, attack it: the refusal paths are the part worth stealing, and they only earn trust by being broken at publicly.
 ```

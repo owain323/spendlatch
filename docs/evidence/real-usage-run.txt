@@ -1,0 +1,12 @@
+rows=442 days=137 months=5 (2026-06 .. 2026-10) calls=10901 credits=240453.27
+
+per-model (worst credits-per-call drift, months present):
+    model-09  months= 3  credits/call=21.3097  drift= 918.7% (2026-09..2026-10)  biggest credit jump=1650.7% (2026-09..2026-10)
+    model-01  months= 4  credits/call=144.5733 drift= 217.4% (2026-08..2026-09)  biggest credit jump= 193.3% (2026-08..2026-09)
+    model-10  months= 4  credits/call=9.28     drift= 190.1% (2026-07..2026-08)  biggest credit jump= 162.9% (2026-07..2026-08)
+    model-02  months= 4  credits/call=25.68    drift= 102.6% (2026-06..2026-07)  biggest credit jump= 193.4% (2026-06..2026-07)
+    model-06  months= 3  credits/call=222.3092 drift=  47.9% (2026-07..2026-08)  biggest credit jump= 577.4% (2026-06..2026-07)
+    model-03  months= 3  credits/call=7.7184   drift=  26.7% (2026-08..2026-09)  biggest credit jump= 775.4% (2026-08..2026-09)
+    model-04  months= 3  credits/call=6.34     drift=  18.2% (2026-07..2026-08)  biggest credit jump= -58.3% (2026-07..2026-08)
+
+finding: model-09 credits-per-call rose 918.7% across 2026-09..2026-10 (real export, no synthetic input)

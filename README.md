@@ -259,6 +259,17 @@ Judges: see [docs/JUDGE-REPRODUCTION.md](docs/JUDGE-REPRODUCTION.md) for the
 Full claim-to-evidence binding: [docs/CLAIMS.md](docs/CLAIMS.md).
 Graded evidence register (what is NOT verified is marked so): [docs/EVIDENCE.md](docs/EVIDENCE.md).
 
+## One real-data run
+
+The detectors are also runnable against a real usage export:
+`tools/analyze_usage.py` reads a daily-by-model CSV (date, model, calls,
+credits) and applies the same credits-per-call canary. The run captured in
+`docs/evidence/real-usage-run.txt` covers **10,901 requests across 137 days
+and 5 months** from a WorkBuddy usage export; seven of ten models show
+credits-per-call drift, the largest window being +918% on an anonymized
+model id. The export itself stays local - what ships is the tool and its
+output, because the aggregate is the owner's usage.
+
 ## What "simulated" covers - and what it does not
 
 The word "simulated" on this page is a scope statement, and it is narrower

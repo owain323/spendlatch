@@ -38,6 +38,8 @@ ALLOWED_NON_TOOLS = {
     "authorization_boundary", "agentic_payment", "spend_intent", "read_only",
     "read_only_analysis", "web_session", "streamable_http", "product_feedback_set",
     "hash_chained", "single_use", "scope_capped", "default_deny", "cost_per_task",
+    # a real script in tools/ (real-export analysis), not an MCP tool
+    "analyze_usage", "credits_per_call",
 }
 
 
