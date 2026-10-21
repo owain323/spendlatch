@@ -38,8 +38,9 @@ ALLOWED_NON_TOOLS = {
     "authorization_boundary", "agentic_payment", "spend_intent", "read_only",
     "read_only_analysis", "web_session", "streamable_http", "product_feedback_set",
     "hash_chained", "single_use", "scope_capped", "default_deny", "cost_per_task",
-    # a real script in tools/ (real-export analysis), not an MCP tool
-    "analyze_usage", "credits_per_call",
+    # real scripts in the repo, not MCP tools: the gate command and the
+    # real-export analysis both appear in prose about running the suite
+    "run_checks", "analyze_usage", "credits_per_call",
 }
 
 
