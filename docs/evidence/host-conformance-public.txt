@@ -1,0 +1,16 @@
+# Host conformance against the DEPLOYED endpoint 2026-10-21T08:56:40Z
+# endpoint: https://spendlatch.owain32380.cn/mcp
+# generator: tools/host_conformance.py --url (a client that is not part of
+#            the server, connecting over the public internet, TLS-terminated
+#            by Caddy in front of the loopback-bound MCP server)
+# This artifact cannot be produced without the deployment being live. If the
+# server changes, regenerate it: python tools/host_conformance.py --url ...
+
+host conformance: what a third-party host can rely on
+[1/1] against live endpoint https://spendlatch.owain32380.cn/mcp
+      server: spendlatch 1.30.0
+      protocol 2025-11-25; tools=True resources=True
+      13 tools
+      card: 7126 chars, mcp-app profile, bridge present
+      refusals render as content (a host can show them), not transport errors
+HOST_CONFORMANCE_OK

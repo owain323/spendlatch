@@ -1,8 +1,8 @@
-# Host conformance 2026-10-21T08:55:13Z
+# Host conformance 2026-10-21T08:57:39Z
 # generator: tools/refresh_evidence.py (tools/host_conformance.py - a host's view, over the wire)
 
 host conformance: what a third-party host can rely on
-[1/1] spawning server on 127.0.0.1:57884 (isolated state)
+[1/1] spawning server on 127.0.0.1:60358 (isolated state)
       ready in 1.5s
       server: spendlatch 1.30.0
       protocol 2025-11-25; tools=True resources=True

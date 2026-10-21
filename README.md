@@ -284,7 +284,11 @@ the second:
    endpoint, and that is what `tools/host_conformance.py --url
    https://spendlatch.owain32380.cn/mcp` checks - protocol, tool contracts,
    hints, the UI resource, and that refusals arrive as content a host can
-   render rather than transport errors.
+   render rather than transport errors. The run is captured twice: against
+   a freshly spawned server (`docs/evidence/host-conformance.txt`) and
+   against the **deployed** endpoint
+   (`docs/evidence/host-conformance-public.txt`) - a client on the public
+   internet, talking to the live server through TLS.
 2. **A simulated Alexa+ experience**, which the rules allow as the alternate
    path, and which is what the web surface is.
 

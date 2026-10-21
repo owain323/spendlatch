@@ -60,6 +60,9 @@ SOURCES = {
     "docs/evidence/mcp-roundtrip.txt": ["tools/mcp_roundtrip.py", "mcp_server"],
     "docs/evidence/mcp-handshake.txt": ["mcp_server/server.py"],
     "docs/evidence/host-conformance.txt": ["tools/host_conformance.py", "mcp_server"],
+    # Produced against the DEPLOYED endpoint, so it also goes stale when the
+    # server changes - regenerate with tools/host_conformance.py --url.
+    "docs/evidence/host-conformance-public.txt": ["tools/host_conformance.py", "mcp_server"],
     "docs/evidence/e2e-flow.txt": ["tools/e2e_flow.py", "agent", "mcp_server", "web"],
     # Timestamp-exempt, but the mapping is still recorded: it says which code
     # would invalidate the artifact if a human re-runs the generator.
