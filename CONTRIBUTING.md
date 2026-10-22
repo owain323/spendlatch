@@ -133,13 +133,20 @@ passed, and it named two tools that do not exist. It is now tracked, and
 tool, a mangled one, a stack the repository does not contain, an
 authenticated session, or a stale test count.
 
-**6. Say what a check does not prove.** The evidence freshness gate mixes
-two rules: commit order for artifacts where the commit really must follow
-the code, and recomputation for artifacts that are a pure function of it.
-The second exists because a derived metric that does not change produces
-no commit, so a timestamp rule would report it stale forever with no way
-out. Both rules are written down in `docs/THREAT-MODEL.md`, and
-`docs/evidence/test-count.txt` explains why two counts are both correct.
+**6. Say what a check does not prove.** The evidence freshness gate checks
+commit order only. It does not recompute the derived and independent metrics;
+that is a manual step (`benchmarks/run.py --derived`, `--independent`), and the
+gate says so in its own output instead of printing "content-verified". A derived
+metric that does not change produces no commit, so a timestamp rule would report
+it stale forever with no way out - which is why the division matters and why the
+prose has to match it.
+
+When you do refresh evidence, the order is not optional: `refresh_evidence.py`
+first, then normalise line endings, then `make_sha256sums.py` last, and only on a
+tree nobody else is writing to. Hashing before the writes settle produces a
+manifest that disagrees with its own bytes, and the failure looks like a real
+tampering rather than a race. `docs/evidence/test-count.txt` explains why two
+counts are both correct.
 
 **7. A limitation written down is worth more than one discovered.** The
 approval session in this demo is issued without a credential check. That is

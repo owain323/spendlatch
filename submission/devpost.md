@@ -65,6 +65,16 @@ The hardest part was not the agent — it was making the boundary boring and pre
 
 Authorization is a product surface, not a middleware detail. The moment you make it visible — mandate cards, receipts, a decision ledger — people start asking for it everywhere.
 
+### What we got wrong
+
+The strongest claims in this project came from people trying to break it, so we ran that on ourselves before submitting. Three findings changed the code:
+
+- **The evidence gate could not fail.** CI checks out a single commit, so `git log -1 -- <path>` always returns the tip, and "evidence must not predate the code" was trivially true — green for months, proving nothing. With `fetch-depth: 0` the same commit went red: five artifacts were older than the code they describe. They are refreshed now, and the gate demonstrably fails when it should.
+- **A gate graded its own homework.** The test-count step rewrites an evidence file and ran before the integrity check, so it compared the manifest against a file it had just rewritten. It runs last now.
+- **One invariant was true in the code and false in the system.** `approve_action` refuses without a web session — but the one-time handoff code travels back through `propose_action` to whoever called it, and a session token costs nothing to mint. An agent that speaks both MCP and HTTP can therefore walk the whole loop without a human. We did not paper over it: `docs/THREAT-MODEL.md` (L1) states it plainly, and the invariant is worded as a capability boundary rather than an identity boundary. Closing it needs an identity provider, which this build does not have.
+
+We would rather hand in a submission that names its own worst case than one that has to be caught.
+
 ### What's next
 
 Bring SpendLatch to Alexa+: a human approves on the phone, the voice agent can then execute exactly what was approved — once, within the cap. Real AWS API calls through the adapter. Conformance tests for anyone building their own boundary.
