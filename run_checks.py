@@ -43,8 +43,12 @@ def main() -> int:
         ("sealed benchmark — independent 14", [sys.executable, "benchmarks/run.py", "--independent"]),
         ("integrity manifest", [sys.executable, "tools/make_sha256sums.py", "--check"]),
         ("evidence freshness", [sys.executable, "tools/check_evidence_freshness.py"]),
-        ("test count", [sys.executable, "tools/check_test_count.py"]),
+        # test count rewrites docs/evidence/test-count.txt, so it must not run
+        # before the integrity step: the gate would compare the manifest against
+        # a file it had just rewritten itself, and pass or fail on whether the
+        # platform collects the same number of cases.
         ("submission copy", [sys.executable, "tools/check_submission.py"]),
+        ("test count", [sys.executable, "tools/check_test_count.py"]),
         # Last, because it is the slowest (~50s): it copies the repo, disables
         # one guard at a time in the copy, and requires the covering tests to
         # go red. A guard nobody covers is a guard that is not there.
