@@ -5,9 +5,10 @@ Every component below says what it is, why it exists, where it lives, and what
 proves it works. Figures follow the AGC chart spec v1.1 (800px logical canvas,
 8px grid, semantic palette, evidence badge).
 
-> Badge legend: the cyan MACHINE-VERIFIED pill on each figure means the
-> drawn from code that runnable checks exercise (`run_checks.py`). The image
-> itself is produced by `tools/make_diagrams.py` and is not gated.
+> Badge legend: the cyan MACHINE-VERIFIED pill on a figure marks a claim that is
+> drawn from code `run_checks.py` actually exercises. The picture itself is
+> produced by `tools/make_diagrams.py` and is not gated; the claim it
+> illustrates is.
 
 ---
 
