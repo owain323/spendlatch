@@ -33,7 +33,7 @@ that does and does not prove.
 Ubuntu/TencentOS with Python >= 3.11:
 
 ```bash
-sudo useradd --system --home /opt/spendlatch --shell /usr/sbin/nologin spendlatch
+sudo useradd --system --home /opt/spendlatch --shell /usr/sbin/nologin spendpilot
 sudo mkdir -p /opt/spendlatch
 # Get the code onto the box (see section 4 for the two channels), then:
 cd /opt/spendlatch

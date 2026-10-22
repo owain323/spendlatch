@@ -228,7 +228,7 @@ Requires Python ≥ 3.11. Zero credentials needed.
 
 ```bash
 pip install -e .            # or: pip install mcp fastapi uvicorn pytest
-python run_checks.py        # tests + sealed benchmark + MCP wire roundtrip + integrity + language
+python run_checks.py        # tests + sealed benchmark + MCP wire roundtrip + integrity
 
 # Surface 1: the MCP server (Streamable HTTP)
 python -m mcp_server.server          # http://127.0.0.1:8101/mcp

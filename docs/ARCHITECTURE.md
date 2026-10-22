@@ -98,7 +98,7 @@ Reading order: left to right, top row, then the 180-degree wrap into row two.
    the receipt (changes, rollback path, `simulated: true`) lands in the
    ledger and on screen.
 5. **Refuse** — any gate fails: structured error, ledger sequence number, no
-   side effects. Verified by 20 tests in `tests/test_actions.py`, including
+   side effects. Verified by 31 tests in `tests/test_actions.py`, including
    forged-signature, expired, replayed, and scope-drifted mandates.
 
 ---
@@ -109,7 +109,7 @@ Reading order: left to right, top row, then the 180-degree wrap into row two.
 
 [SVG master](diagrams/fig3-evidence-map.svg) · [alt text](diagrams/fig3-evidence-map.alt.txt)
 
-Five representative claims from `docs/CLAIMS.md` (full matrix: C1–C12), each
+Five representative claims from `docs/CLAIMS.md` (full matrix: C1–C15), each
 linked by its reproduction command to the artifact that proves it:
 
 | Claim | Command | Artifact |

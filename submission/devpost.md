@@ -73,13 +73,12 @@ Bring SpendLatch to Alexa+: a human approves on the phone, the voice agent can t
 
 ## 3. Product Feedback Set
 
-The track asks five questions per tool. Two surfaces are covered here: the web
-experience and the MCP server. Replace each `[TOOL]` heading with the surface
-name when pasting.
+The track asks five questions per tool. Four surfaces were used in this build,
+and each is answered below in its own words rather than with one merged answer.
 
 
 
-### [TOOL] = SpendLatch Web Chat
+### The web chat (the simulated Alexa+ experience)
 
 **Q1. How does the user invoke this tool?**
 User opens https://spendlatch.owain32380.cn and types plain questions like "anything unusual?" or "prove the saving". The agent opens the conversation itself — it does not wait to be asked.
@@ -96,7 +95,7 @@ The user can ask "why didn't you tell me?" — the agent answers from its decisi
 **Q5. Give an example of the end-to-end user flow.**
 User: "anything unusual?" → agent shows 4 evidence cards (including one that says do NOT cut). User: "prove the saving" → agent attaches observations, assumptions, and pricing basis to the claim. User: "approve" → a signed mandate is issued. User: "execute" → the action runs once through the adapter and a receipt is recorded. User: "execute" again → refused, and the refusal is in the ledger.
 
-### [TOOL] = SpendLatch MCP Server
+### The MCP server
 
 **Q1. How does the user invoke this tool?**
 The MCP server (protocol 2025-11-25, Streamable HTTP) is exposed at https://spendlatch.owain32380.cn/mcp. An agent surface (Claude Desktop, any MCP client) connects and lists 13 tools: spending_overview, detect_anomalies, simulate_saving, set_budget, budget_status, list_subscriptions, unit_economics, proactive_briefing, decision_ledger, propose_action, approve_action, execute_action, mandate_status.
@@ -114,7 +113,7 @@ Every refusal is a first-class ledger entry ("refuse"), so "why did you not act"
 **Q5. Give an example of the end-to-end user flow.**
 The agent asks the server for anomalies, gets evidence, tries to execute without a mandate, and is refused with "I hold no valid mandate, so I will not act" — the refusal is recorded in the ledger as a first-class entry. The human approves on the web surface; only then does the same MCP execution path succeed, once.
 
-### [TOOL] = MCP Python SDK (`mcp>=1.12,<2`)
+### The MCP Python SDK (`mcp>=1.12,<2`)
 
 **Q1. How does the user invoke this tool?**
 It is imported and called at runtime by the MCP server entry point, which
@@ -134,7 +133,7 @@ The wire probe (`tools/mcp_roundtrip.py`) is the feedback channel we actually us
 **Q5. Give an example of the end-to-end user flow.**
 Client calls `initialize` → protocol 2025-11-25 negotiated → `tools/list` returns 13 tools → `tools/call` on the read-only surface returns valid structured content → `set_budget` then `budget_status` agree over the wire → an `approve_action` call carrying no session credential is refused, and that refusal appears in `decision_ledger`.
 
-### [TOOL] = FastAPI
+### FastAPI
 
 **Q1. How does the user invoke this tool?**
 `agent/backend.py` is a FastAPI application serving the web surface: `/` returns the page, `/static/*` the assets, and `/api/*` the chat, session, ledger and health endpoints.
@@ -155,23 +154,32 @@ Browser posts a session → posts a message → receives cards → the mandate c
 
 ## 4. Why these tracks
 
-```
-Alexa+ Developer Track: agentic voice workflows need a spending boundary more than any other surface — a voice agent that can move money without a human-approved cap is the exact failure mode SpendLatch removes. The MCP surface is already built to the 2025-11-25 protocol with Streamable HTTP; the human approval surface is live. The remaining work is wiring the two together inside the Alexa+ skill flow; the MCP surface and the approval surface already speak the same protocol, so that step is integration rather than invention.
+### Why the Alexa+ track
 
-Open Source mini challenge: the whole boundary — policy gate, ledger, adapters, verifier — is MIT-licensed and reproducible from https://github.com/owain323/spendlatch. Anyone can clone, run, break, and verify it.
+An agentic voice surface is the case where a spending boundary matters most: a voice agent that can move money has no screen on which a person can read a diff, and "it sounded like it agreed" is not consent. SpendLatch puts the approval where a screen still exists — a signed mandate the person confirms — and lets the voice agent execute that exact mandate once.
 
-**Open Source mini challenge — required fields**
+Where the integration actually stands: the MCP server and the approval surface are built and live at protocol 2025-11-25 over Streamable HTTP. The voice conversation in the demo is a faithful simulation, because the Alexa+ skill runtime is not exposed to hackathon entrants — there is no sandbox in which a submission could exercise it. So the tool layer, the mandate gate, the ledger and the refusals are real code doing real work; the speech layer in front of them is a stand-in, and it is labelled as one on the page and in the UI. Wiring it to the real skill flow is integration, not invention: both sides already speak MCP.
 
-- **Project repository URL:** https://github.com/owain323/spendlatch
-- **Contribution URL:** https://github.com/owain323/spendlatch (new repository, created 2026-09-18 — inside the hackathon window)
+### What this would use on AWS
+
+The provider adapter is a simulated AWS adapter today — it names the API it would call, labels the receipt `simulated adapter`, and refuses to pretend otherwise. A real deployment swaps one adapter module; the mandate gate, the ledger and the verifier are unchanged, because none of them know what a provider is.
+
+### Why the Open Source mini challenge
+
+The whole boundary — policy gate, hash-chained ledger, provider adapters, offline verifier — is MIT-licensed and reproducible from https://github.com/owain323/spendlatch. It is a new repository created on 2026-09-18, inside the hackathon window, and the contribution is the project itself.
+
+- **Repository and contribution URL:** https://github.com/owain323/spendlatch
 - **GitHub username:** `owain323`
-- **What we did:** Built and published a new open-source project: the authorization boundary between an AI agent and a consequential action. A deterministic policy gate parses every request into a spend intent and decides; a hash-chained ledger records every decision including every refusal; a mandate (HMAC-SHA256, single-use, scope-capped, 15-minute expiry) is the only thing that unlocks execution; an offline verifier re-checks an exported proof bundle against seven consistency checks. Thirteen tools are exposed over MCP 2025-11-25 / Streamable HTTP, with an MCP Apps approval card served as a `ui://` resource.
-- **Real usage, not only fixtures:** `tools/analyze_usage.py` reads a real WorkBuddy usage export (10,901 requests across 137 days, daily by model) and applies the same credits-per-call canary the demo uses. Seven of the 23 anonymized model ids carry enough history to judge, and all seven drift. The export stays local; the tool and its output are what we ship.
-- **How it works:** `python run_checks.py` runs the whole thing — 232 pytest tests (230 in the pytest step plus 2 wire round-trip tests), a sealed three-tier benchmark 12/12, an MCP wire probe 8/8, and a real MCP client round trip against a real server subprocess, a host-conformance probe run against the deployed endpoint, an integrity manifest over 122 files, an evidence-freshness check, and a mutation check that deletes each of twelve guards one at a time and requires the suite to go red. A judge can reproduce every claim in the README in about five minutes with zero credentials.
-- **Why it matters:** Agentic-payment protocols (AP2, ACP, x402) all converged on the same shape — an agent that touches money must carry proof of human authorization, bounded in scope and time, with an audit trail. That shape is infrastructure, not product surface, and it is currently rebuilt from scratch by everyone who needs it. Publishing it under MIT means the next team can adopt the boundary instead of reinventing it — and, more useful still, attack it: the refusal paths are the part worth stealing, and they only earn trust by being broken in public.
-```
+- **What was published:** a deterministic policy gate that turns a request into a spend intent and decides; a SHA-256 hash-chained ledger that records every decision including every refusal; a mandate (HMAC-SHA256, single-use, scope-capped, 15-minute expiry) as the only thing that unlocks execution; an offline verifier that re-checks an exported proof bundle; thirteen tools over MCP 2025-11-25 / Streamable HTTP with the approval card served as a `ui://` resource.
+- **Not only fixtures:** `tools/analyze_usage.py` reads a real usage export (10,901 requests across 137 days) and applies the same credits-per-call canary the demo uses. Seven of the 23 anonymized model ids carry enough history to judge, and all seven drift. The export stays local; the tool and its output are what we ship.
+- **How to check it:** `python run_checks.py` runs the whole set — 232 pytest tests, a sealed three-tier benchmark 12/12, an MCP wire probe 8/8, a real MCP client round trip against a real server subprocess, a host-conformance probe against the deployed endpoint, an integrity manifest over 122 files, an evidence-freshness check, and a mutation check that deletes each of twelve guards one at a time and requires the suite to go red. Five minutes, zero credentials.
 
----
+### The friction log
+
+The build log is published in the required format — task attempted, steps taken, expected versus actual, severity, workaround, suggestion — at https://github.com/owain323/spendlatch/blob/main/friction-log.md. Two entries that cost the most time:
+
+- **MCP Python SDK 2.0.0 removed `mcp.server.fastmcp`.** An unpinned install boots and dies, so the version has to be pinned below 2. Suggestion: keep the import path stable across a major, or ship a deprecation shim.
+- **Tool schemas are generated from docstrings, so the safety annotations a host relies on drift silently.** We wrote a conformance probe to catch it, and it immediately found four gaps. Suggestion: make `readOnly`/`destructive`/`idempotent` first-class fields rather than prose.
 
 ## 5. Fields to fill at submission time
 
