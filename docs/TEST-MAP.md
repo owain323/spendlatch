@@ -8,13 +8,21 @@ to the way it fails when that behavior breaks.
 
 | Layer | Lines | Role |
 |---|---|---|
-| Product kernel (`mcp_server/` + `agent/` + `web/`) | 4,830 | the thing being built |
-| Verification (`tests/`) | 2,560 | 236 collected pytest cases |
+| Product kernel (`mcp_server/` + `agent/` + `web/`) | 4,994 | the thing being built |
+| Verification (`tests/`) | 2,776 | 238 collected pytest cases |
 | Quality gates (`tools/` + `benchmarks/`) | 2,812 | what keeps the above honest |
 
 The verification layer is roughly the same size as the kernel **on purpose**:
 the product moves money under a mandate, and the guard code is the product.
-Tests are NOT more than the kernel; they are about 47% of it.
+Tests are NOT more than the kernel; they are about 56% of it.
+
+Counted with:
+
+```
+find mcp_server agent web -name '*.py' -o -name '*.js' -o -name '*.html' -o -name '*.css' | xargs wc -l
+find tests -name '*.py' | xargs wc -l
+find tools benchmarks -name '*.py' | xargs wc -l
+```
 
 ## File by file
 

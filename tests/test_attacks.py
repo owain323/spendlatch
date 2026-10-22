@@ -109,7 +109,10 @@ def test_a_stale_open_proposal_does_not_turn_the_attack_into_a_500(client):
     body = res.json()
     assert body["refused"] is True, body.get("reason")
     assert body["cards"][0]["type"] == "denied"
-    assert store.load_state(None)["proposals"]["p-stale"]["status"] == "superseded"
+    # Two terminal states are both correct here: "expired" when the TTL judge
+    # reaches it first, "superseded" when the fixture retires it explicitly.
+    # What matters is that it is no longer reusable as "proposed".
+    assert store.load_state(None)["proposals"]["p-stale"]["status"] in ("expired", "superseded")
 
 
 def test_reported_approval_is_not_consent(client):

@@ -31,11 +31,11 @@ real money movement.
 | T7 | Untrusted surface claims "a human approved" | Surface isolation: only the web session surface can approve; the MCP surface refuses and logs. This stops an agent that speaks MCP — it does not stop a caller that speaks HTTP (see L1) | `test_actions.py::TestAuthorizationBoundary::test_mcp_surface_tool_refuses_and_cannot_be_given_a_token` |
 | T8 | Duplicate execution after timeout/retry | Transaction identity: every receipt carries request_id / execution_id / idempotency_key derived from mandate+nonce | `test_receipt_carries_transaction_identity` |
 | T9 | Tampered decision history | Hash-chained ledger: every entry commits to content and predecessor | `TestHashChain` |
+| T10 | Silent state corruption | Fail-closed persistence: corrupt file preserved, never silently reset | `test_corrupt_state_fails_closed_and_preserves_file` |
 | T11 | Human says "no" and the agent signs anyway | Consent is read off the sentence: a refusal-shaped or interrogative request never reaches the approve path, and the refusal itself is a ledger entry | `test_boundaries.py::test_refusal_shaped_utterance_never_signs` |
 | T12 | A valid mandate executes a different operation | The signed scope is compared against the adapter that would actually run (registry entry + operation table) before dispatch; a swapped adapter refuses and names the difference | `test_boundaries.py::test_swapped_adapter_cannot_run_under_a_valid_signature` |
 | T13 | New spend requested with no mandate at all | Default-deny gate reachable without the LLM: a spend verb plus an amount is denied and logged, so the refusal is recorded even when the planner is off | `test_boundaries.py::test_new_spend_is_denied_and_logged` |
 | T14 | What the system actually guarantees | Every state change is attributable: the actor, the evidence, and the outcome are in the ledger, and the bundle can be verified offline. What it cannot yet show is that the approving human was who they claim to be (L1) | `tests/test_boundaries.py` (the whole file is this row, in executable form) |
-| T10 | Silent state corruption | Fail-closed persistence: corrupt file preserved, never silently reset | `test_corrupt_state_fails_closed_and_preserves_file` |
 
 ## integrity vs authenticity — stated precisely
 

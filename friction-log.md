@@ -153,7 +153,9 @@ account and model access were not yet in place. An earlier draft of this log
 answered "would we use it again: yes" on the strength of the mocked layer
 alone. That overstated what we had actually done, and it is corrected here:
 the honest answer is *not yet run*. This section will be rewritten from the
-real smoke output (`tools/aws_smoke.py`, `docs/evidence/aws-live.txt`) once
+real smoke output of `tools/aws_smoke.py` once — that tool writes
+`docs/evidence/aws-live.txt` only when a cloud credential is present, so no
+such file exists in this repository. It lands once
 the live call lands, and a friction entry will be added only for what
 actually happened.
 

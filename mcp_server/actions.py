@@ -46,6 +46,17 @@ MANDATE_TTL_SECONDS = 900  # 15 minutes: approval is a decision, not a blank che
 # The TTL is NOT a caller-supplied parameter — exposing it let a client mint
 # a 100-hour "15-minute" mandate. Policy belongs to the server.
 
+# A proposal is a proposal, not a reservation. It expires on the same clock as
+# the handoff code that carries it over to the web surface. Without this, one
+# unauthenticated `propose_action` per action left a permanent `proposed`
+# record in the shared workspace: every later propose for that action hit the
+# idempotent short-circuit and returned `approval_handoff: null`, so no code
+# ever reached a human again — four requests to close the approval path for
+# everybody. It is also the other half of why the attack fixtures returned
+# 500: they reused such a proposal and the proof-drift guard (correctly)
+# refused it.
+PROPOSAL_TTL_SECONDS = 900
+
 # Exactly these fields are signed. Status and execution metadata live OUTSIDE
 # the signed payload, so bookkeeping mutations can never invalidate (or fake)
 # a signature.
@@ -107,6 +118,55 @@ def _refuse(subject: str, reason: str, state_path: Path | None, **extra) -> dict
     return {"refused": True, "error": reason, "ledger_seq": entry["seq"], **extra}
 
 
+def _expire_stale_proposals(state: dict) -> int:
+    """Mark `proposed` proposals past their expiry as `expired`; return the count.
+
+    Not a deletion: an expired proposal stays in the file as audit history, it
+    just stops being reusable or approvable.
+
+    A proposal written before this field existed has no `expires_at`, but it
+    does carry `created_at`. Falling back to that is the difference between a
+    TTL and a decoration: a legacy proposal with no expiry is reusable forever,
+    and four unauthenticated `propose_action` calls are then enough to pin every
+    action in the shared MCP workspace to a proposal nobody can approve — a
+    permanent denial of the handoff flow for every later visitor.
+    """
+    now = _now()
+    expired = 0
+    for proposal in state["proposals"].values():
+        if proposal.get("status") != "proposed":
+            continue
+        raw = proposal.get("expires_at") or proposal.get("created_at")
+        if not raw:
+            continue
+        if not proposal.get("expires_at"):
+            # Legacy row: judge it by birth time + the same TTL.
+            try:
+                raw = _iso(datetime.fromisoformat(raw) + timedelta(seconds=PROPOSAL_TTL_SECONDS))
+            except ValueError:
+                continue
+        try:
+            if datetime.fromisoformat(raw) <= now:
+                proposal["status"] = "expired"
+                expired += 1
+        except ValueError:
+            continue
+    return expired
+
+
+def _proposal_is_open(proposal: dict) -> bool:
+    """Still `proposed`, and not past its own expiry."""
+    if proposal.get("status") != "proposed":
+        return False
+    raw = proposal.get("expires_at")
+    if not raw:
+        return True          # pre-TTL state: no expiry to judge it by
+    try:
+        return datetime.fromisoformat(raw) > _now()
+    except ValueError:
+        return True
+
+
 def open_session() -> dict:
     """Mint an authenticated web session (token + its own workspace)."""
     return store.open_auth_session()
@@ -117,16 +177,21 @@ def open_session() -> dict:
 def propose_action(action_id: str, state_path: Path | None = None) -> dict:
     """Attach the proof to a concrete, bounded action and put it on the table.
 
-    Idempotent per action: re-proposing an already-open proposal returns the
-    existing one instead of duplicating. Each proposal carries a proof_hash
-    (what the human will see when approving) and an approval challenge.
+    Idempotent per action *while the proposal is still open*: re-proposing an
+    unexpired proposal returns the existing one instead of duplicating. Past
+    its expiry the old one is marked `expired` (kept for audit) and a new one
+    is minted — a proposal nobody answered must not hold the action forever.
+    Each proposal carries a proof_hash (what the human will see when
+    approving), an approval challenge, and its own expiry.
     """
     proof = tools.simulate_saving(action_id)
     if "error" in proof:
         return proof
     state = store.load_state(state_path)
+    if _expire_stale_proposals(state):
+        store.save_state(state, state_path)
     for proposal in state["proposals"].values():
-        if proposal["action_id"] == action_id and proposal["status"] == "proposed":
+        if proposal["action_id"] == action_id and _proposal_is_open(proposal):
             return {**proposal, "proof": proof, "note": "already proposed — awaiting approval"}
 
     proposal_id = f"p-{secrets.token_hex(4)}"
@@ -141,6 +206,7 @@ def propose_action(action_id: str, state_path: Path | None = None) -> dict:
         "operation": operation,
         "status": "proposed",
         "created_at": _iso(_now()),
+        "expires_at": _iso(_now() + timedelta(seconds=PROPOSAL_TTL_SECONDS)),
         "proof_hash": proof_hash(proof),
         "approval_challenge": secrets.token_hex(16),
         "proof_snapshot": {
@@ -188,6 +254,10 @@ def approve_action(proposal_id: str, session_token: str | None = None,
     agent proposes" and "a human decided".
     """
     state = store.load_state(state_path)
+    # Read-path pruning: an approval arriving after the proposal expired must
+    # find an `expired` proposal, not an open one it can still sign.
+    if _expire_stale_proposals(state):
+        store.save_state(state, state_path)
     if not store.token_is_authenticated(session_token):
         return _refuse(
             proposal_id,

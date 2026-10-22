@@ -108,7 +108,7 @@ because "we take security seriously" is not a claim anyone can check.
 |---|---|---|---|
 | **I1** | **Approval and execution are different surfaces.** The MCP tool surface cannot *submit* an approval: a tool call to `approve_action` carries no session credential and is refused and logged. Signing requires a web session token. **This is a capability boundary, not an identity boundary** — the one-time handoff code that binds a proposal to a web session is returned in the `propose_action` tool result, so a host is trusted to hand it to a human; the server cannot verify who redeems it. See [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) L1. | `actions.approve_action` requires an authenticated web session token; the MCP tool calls with none and is refused and logged | `TestAuthorizationBoundary`, `test_approving_without_a_session_is_denied_and_logged` |
 | **I2** | **No mandate, no motion.** A request to act without a valid mandate is refused, not queued and not performed. | `actions.execute_action` | `test_execute_with_no_mandate_is_denied_and_logged` |
-| **I3** | **A mandate can produce at most one successful execution.** (The invariant is stated as an outcome, not as a field: `consumed == true` is the implementation, "at most one execution" is the promise.) | The claim is written *before* the provider runs and lives in `state["consumed"]`, deliberately *outside* the bounded ledger, so it cannot evaporate under log trimming or be re-armed by rewinding `status`. The whole check-claim-execute section runs under a process lock | `test_the_identical_request_twice_produces_one_receipt`, `test_rollback_of_status_does_not_allow_a_second_execution`, `test_ten_concurrent_executes_produce_exactly_one_receipt` (10 concurrent callers → 1 execution, 9 single-use refusals) |
+| **I3** | **A mandate can produce at most one successful execution.** (The invariant is stated as an outcome, not as a field: `consumed == true` is the implementation, "at most one execution" is the promise.) | The claim is written *before* the provider runs and lives in `state["consumed"]`, deliberately *outside* the bounded ledger, so it cannot evaporate under log trimming or be re-armed by rewinding `status`. The whole check-claim-execute section runs under a process lock — one process, which is what the demo is; the cross-process caveat is stated under "What 'single-use' does and does not mean" | `test_the_identical_request_twice_produces_one_receipt`, `test_rollback_of_status_does_not_allow_a_second_execution`, `test_ten_concurrent_executes_produce_exactly_one_receipt` (10 concurrent callers → 1 execution, 9 single-use refusals) |
 | **I4** | **An issued mandate is immutable.** | Scope (provider, operation, cap) is inside `SIGNED_FIELDS`; editing it invalidates the HMAC — a raised cap becomes an *unsigned* mandate, not a bigger one | `test_raising_the_cap_after_approval_does_not_take_effect` |
 | **I5** | **Approval expires.** | `MANDATE_TTL_SECONDS = 900`, a server constant, never a caller parameter | `test_a_truly_expired_mandate_is_refused` |
 | **I6** | **The evidence you approved is the evidence that runs.** | `proof_hash` is signed into the mandate and re-derived at execution; drift, cap drift, and adapter-registry swaps are each refused separately | `test_proof_drift_since_approval_refused`, `test_bill_above_the_approved_cap_is_refused` |
@@ -124,6 +124,19 @@ computed by the same function the product runs in production, and it is
 recorded in the same ledger. A truly expired mandate is one whose
 `expires_at` is genuinely in the past — **never** a `if demo_mode: pretend_expired()`.
 
+Read that narrowly, because it is easy to over-read: **the five attack
+*mutants* are refused by their corresponding guards and written to the ledger**
+— the claim is about the refusal, not about the endpoint behaving well from
+any state. Two qualifications belong beside it. The fixture's own session is
+minted by the server (`actions.open_session()` inside `mcp_server/attacks.py`),
+because a fixture has to reach the approval path to produce a mandate worth
+attacking; that is the L1 capability gap, exercised on purpose. And until
+proposals were given a 15-minute lifetime, an anonymous `POST /api/attack/*`
+could pick up a stale proposal whose proof no longer reproduced, have the
+drift guard correctly refuse it, and see `_mint()` raise — HTTP 500 on four of
+the five routes, with the partial state already written. Both are fixed and
+tested; it is why the sentence above is about mutants, not about endpoints.
+
 ### What "single-use" does and does not mean
 
 The precise claim is **single-use authorization with idempotent execution
@@ -134,6 +147,16 @@ semantics** — not "exactly once external spending".
   *before* the provider runs, keyed by a nonce-derived `idempotency_key`, and
   a crash between claim and receipt leaves the mandate spent rather than
   silently re-armed.
+- **Where the enforceable scope ends (single process):** "single-use" holds
+  inside one process, which is what the demo is (`_EXECUTE_LOCK`, plus the
+  web app's own `_STATE_LOCK`). State is a whole-file JSON read-modify-write
+  with no cross-process lock, so two OS processes writing the same workspace
+  can lose an update — measured at ~9.4 ms per read-modify-write, 50% of
+  concurrent updates lost in a two-process test. A mandate is spent in
+  `state["consumed"]`, so a lost update is the shape a cross-process double
+  spend would take. The deployment runs two services over one state directory
+  (`spendlatch-web`, `spendlatch-mcp`); closing that is a lock-file or a real
+  store, and it is not claimed as done.
 - **What is not claimed:** the provider adapters are simulated. Against a real
   payment API, `state` and the external charge are **not** one atomic
   transaction — that needs the idempotency key to be honoured *downstream*
@@ -163,16 +186,19 @@ semantics** — not "exactly once external spending".
 - **MCP Apps native** — `propose_action` links an interactive approval card
   (`ui://spendlatch/approval-card`, `text/html;profile=mcp-app`) that hosts
   render inline; the same HTML speaks the postMessage JSON-RPC bridge.
-- **The MCP server is the product** — 13 typed tools, 236 pytest tests, a sealed
+- **The MCP server is the product** — 13 typed tools, 239 pytest tests, a sealed
   benchmark.
 
   *The four numbers, stated so they cannot be confused:*
-  **236** pytest tests collected — of which the gate's pytest step runs
-  **230** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
+  **239** pytest tests collected — of which the gate's pytest step runs
+  **236** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
   separate MCP step, because they spawn a real server subprocess.
   On top of that: **12/12** sealed benchmark cases, **8/8** MCP wire-probe
   steps, and **12/12** mutation guards killed. Those three are not pytest
-  tests, and are never counted as such.
+  tests, and are never counted as such. The mutation operators delete a guard
+  and require its tests to go red **inside one process** — that is a statement
+  about coverage, not about cross-process behaviour (see the single-process
+  scope note under "What 'single-use' does and does not mean").
 
 ## Architecture
 
@@ -197,9 +223,10 @@ benchmarks/           two-phase evaluation (predictions sealed before gold
                       labels are opened), three honestly-labeled tiers:
                       12 public regression fixtures + 14 independent
                       hand-written cases + a 24-case derived invariance
-                      suite (mechanical transformations, labels gitignored)
+                      suite (mechanical transformations; cases rebuilt by
+                      tools/make_derived.py and not shipped; labels kept local)
 docs/                 CLAIMS.md · SCOPE-FREEZE.md · JUDGE-REPRODUCTION.md · EVIDENCE.md
-                      THREAT-MODEL.md (T1-T10 threats, defense, proof pointers)
+                      THREAT-MODEL.md (T1-T14 threats, defense, proof pointers)
                       PATTERNS.md (reusable modules for the next project)
                       LLM-PLANNER.md (optional Bedrock planner, off by default)
                       skills/ — one page per MCP tool: activation, flow, refusals
@@ -262,9 +289,9 @@ AWS smoke run (it needs a billed account).
 
 | Claim | Evidence |
 |---|---|
-| 236 automated tests pass — 234 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
+| 239 automated tests pass — 236 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
 | Detection, three honestly-labeled tiers: public regression 12/12; independent hand-written suite 14/14 (boundary values, split verdicts, cross-rule interactions); derived invariance suite 24/24 (mechanical transformations of the public fixtures — proves invariance, NOT generalization). **All three tiers are in the gate**, not just the public one | `benchmarks/results/metrics.json`, `benchmarks/results/independent-metrics.json`, `benchmarks/results/derived-metrics.json` |
-| 12 of 12 guards are covered — deleting each one in a copy of the repo turns its tests red (`tools/mutation_check.py`, ~50s, **in the gate**) | mutation output in the `run_checks.py` transcript |
+| 12 of 12 guards are covered — deleting each one in a copy of the repo turns its tests red (`tools/mutation_check.py`, ~50s, **in the gate**). Single-process operators: this is a coverage claim, not a cross-process one | mutation output in the `run_checks.py` transcript |
 | Real MCP client roundtrip: protocol 2025-11-25, 13/13 tools, action loop + ui:// resource over the wire | `docs/evidence/mcp-roundtrip.txt` |
 | End-to-end web flow (9 criteria, incl. mandate replay refusal) | `docs/evidence/e2e-flow.txt` |
 | Proof bundle export + offline consistency check (7 checks over the bundle vs. the state file; same-secret self-verification — NOT independent attestation) | `tools/verify_proof.py`, `tests/test_verify.py` |

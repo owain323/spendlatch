@@ -11,6 +11,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history on purpose. The evidence-freshness gate compares the
+          # commit time of each artifact against the commit time of the code it
+          # describes; in a depth-1 clone every path resolves to the tip commit,
+          # so that gate can never fail. It looked green in CI while a full
+          # clone reported five stale artifacts.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:

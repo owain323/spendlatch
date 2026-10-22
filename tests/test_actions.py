@@ -60,6 +60,80 @@ class TestPropose:
         kinds = [e["kind"] for e in ledger.entries()]
         assert "propose" in kinds
 
+    def test_expired_proposal_does_not_block_a_new_proposal(self):
+        """A proposal nobody answered must not own the action forever.
+
+        Before the TTL, one unauthenticated propose per action left a
+        permanent `proposed` record in the shared tool workspace, so every
+        later propose hit the idempotent short-circuit and returned
+        `approval_handoff: null` — no code ever reached a human again, for
+        everybody, from four requests and no credential.
+        """
+        store.set_workspace("mcp")          # only the tool workspace mints handoffs
+        try:
+            first = _propose("annual-zoom")
+            assert first["approval_handoff"]["code"]
+
+            # Age it past its own expiry, exactly as a real 15-minute wait would.
+            state = store.load_state(None)
+            state["proposals"][first["proposal_id"]]["expires_at"] = actions._iso(
+                actions._now() - timedelta(minutes=1))
+            store.save_state(state, None)
+
+            second = actions.propose_action("annual-zoom")
+            assert second["proposal_id"] != first["proposal_id"], \
+                "the expired proposal was handed back as if it were still open"
+            assert second["approval_handoff"]["code"], \
+                "no handoff code was minted, so the web surface cannot approve"
+
+            after = store.load_state(None)
+            assert after["proposals"][first["proposal_id"]]["status"] == "expired"
+            assert after["proposals"][second["proposal_id"]]["status"] == "proposed"
+        finally:
+            store.set_workspace(None)
+
+    def test_legacy_proposal_without_expiry_is_judged_by_its_birth_time(self):
+        """A row written before proposals had a TTL must not live forever.
+
+        Production carried proposals with `created_at` but no `expires_at`.
+        Skipping those made the TTL decorative exactly where it mattered: four
+        anonymous propose calls could still pin every action in the shared
+        workspace, because the short-circuit only looked at `status`.
+        """
+        store.set_workspace("mcp")
+        try:
+            first = _propose("annual-zoom")
+            state = store.load_state(None)
+            row = state["proposals"][first["proposal_id"]]
+            row.pop("expires_at", None)                     # legacy shape
+            row["created_at"] = actions._iso(actions._now() - timedelta(hours=2))
+            store.save_state(state, None)
+
+            second = actions.propose_action("annual-zoom")
+            assert second["proposal_id"] != first["proposal_id"],                 "a legacy row with no expiry blocked the action forever"
+            assert second["approval_handoff"]["code"]
+            after = store.load_state(None)
+            assert after["proposals"][first["proposal_id"]]["status"] == "expired"
+        finally:
+            store.set_workspace(None)
+
+    def test_expired_proposal_cannot_be_approved(self):
+        store.set_workspace("mcp")
+        try:
+            proposal = _propose("route-haiku")
+            state = store.load_state(None)
+            state["proposals"][proposal["proposal_id"]]["expires_at"] = actions._iso(
+                actions._now() - timedelta(seconds=1))
+            store.save_state(state, None)
+
+            result = actions.approve_action(proposal["proposal_id"],
+                                           session_token=_session())
+            assert result["refused"] is True
+            assert "expired" in result["error"]
+            assert store.load_state(None)["proposals"][proposal["proposal_id"]]["status"] == "expired"
+        finally:
+            store.set_workspace(None)
+
 
 class TestApprove:
     def test_mandate_is_signed_scoped_and_expiring(self):

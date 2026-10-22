@@ -6,8 +6,8 @@ proves it works. Figures follow the AGC chart spec v1.1 (800px logical canvas,
 8px grid, semantic palette, evidence badge).
 
 > Badge legend: the cyan MACHINE-VERIFIED pill on each figure means the
-> figure's content is exercised by runnable checks (`run_checks.py`), not
-> asserted by hand.
+> drawn from code that runnable checks exercise (`run_checks.py`). The image
+> itself is produced by `tools/make_diagrams.py` and is not gated.
 
 ---
 
@@ -70,8 +70,11 @@ regenerate: `python tools/make_diagrams.py`
   24-case derived invariance suite (mechanical transformations — invariance,
   not generalization). Predictions written to disk before gold labels are
   opened. Reuses the same `analyze_dataset` the product runs.
-- **Quality gates** (`run_checks.py`) — one command: pytest (236) + sealed
-  benchmark + MCP wire roundtrip + SHA256 integrity.
+- **Quality gates** (`run_checks.py`) — one command, eleven steps: byte-compile,
+  pytest (238 collected / 236 in the step), the sealed benchmark over three
+  tiers, the MCP wire probe, a real client roundtrip, the SHA256 integrity
+  manifest, evidence freshness, the recorded test count, the submission
+  copy, and the mutation check.
 
 ---
 
