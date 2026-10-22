@@ -191,7 +191,7 @@ semantics** — not "exactly once external spending".
 
   *The four numbers, stated so they cannot be confused:*
   **239** pytest tests collected — of which the gate's pytest step runs
-  **236** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
+  **237** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
   separate MCP step, because they spawn a real server subprocess.
   On top of that: **12/12** sealed benchmark cases, **8/8** MCP wire-probe
   steps, and **12/12** mutation guards killed. Those three are not pytest
@@ -289,7 +289,7 @@ AWS smoke run (it needs a billed account).
 
 | Claim | Evidence |
 |---|---|
-| 239 automated tests pass — 236 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
+| 239 automated tests pass — 237 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
 | Detection, three honestly-labeled tiers: public regression 12/12; independent hand-written suite 14/14 (boundary values, split verdicts, cross-rule interactions); derived invariance suite 24/24 (mechanical transformations of the public fixtures — proves invariance, NOT generalization). **All three tiers are in the gate**, not just the public one | `benchmarks/results/metrics.json`, `benchmarks/results/independent-metrics.json`, `benchmarks/results/derived-metrics.json` |
 | 12 of 12 guards are covered — deleting each one in a copy of the repo turns its tests red (`tools/mutation_check.py`, ~50s, **in the gate**). Single-process operators: this is a coverage claim, not a cross-process one | mutation output in the `run_checks.py` transcript |
 | Real MCP client roundtrip: protocol 2025-11-25, 13/13 tools, action loop + ui:// resource over the wire | `docs/evidence/mcp-roundtrip.txt` |

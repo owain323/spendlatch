@@ -71,7 +71,7 @@ regenerate: `python tools/make_diagrams.py`
   not generalization). Predictions written to disk before gold labels are
   opened. Reuses the same `analyze_dataset` the product runs.
 - **Quality gates** (`run_checks.py`) — one command, eleven steps: byte-compile,
-  pytest (238 collected / 236 in the step), the sealed benchmark over three
+  pytest (239 collected / 237 in the step), the sealed benchmark over three
   tiers, the MCP wire probe, a real client roundtrip, the SHA256 integrity
   manifest, evidence freshness, the recorded test count, the submission
   copy, and the mutation check.

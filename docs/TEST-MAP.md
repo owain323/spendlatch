@@ -9,7 +9,7 @@ to the way it fails when that behavior breaks.
 | Layer | Lines | Role |
 |---|---|---|
 | Product kernel (`mcp_server/` + `agent/` + `web/`) | 4,994 | the thing being built |
-| Verification (`tests/`) | 2,776 | 238 collected pytest cases |
+| Verification (`tests/`) | 2,776 | 239 collected pytest cases |
 | Quality gates (`tools/` + `benchmarks/`) | 2,812 | what keeps the above honest |
 
 The verification layer is roughly the same size as the kernel **on purpose**:
