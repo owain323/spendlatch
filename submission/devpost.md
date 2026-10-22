@@ -53,7 +53,7 @@ Every one of these has a test that fails when the guard behind it is deleted, an
 
 ### Challenges we ran into
 
-The hardest part was not the agent — it was making the boundary boring and precise. Defining what a mandate can and cannot express took several iterations. Making replay protection work under a single-use nonce plus a 15-minute expiry, and proving it with a real rejected replay, took care. The AWS sandbox adapter had to be labeled honestly: the receipt says "simulated adapter" today, and the real API path is designed but not yet switched on.
+The hard part was not the agent — it was making the boundary boring and precise: what a mandate can and cannot express, replay protection under a single-use nonce with a 15-minute expiry, and an AWS adapter labelled honestly ("simulated adapter") rather than dressed up.
 
 ### Accomplishments that we're proud of
 
@@ -172,24 +172,23 @@ Where the integration actually stands: the MCP server and the approval surface a
 
 ### What this would use on AWS
 
-The provider adapter is a simulated AWS adapter today — it names the API it would call, labels the receipt `simulated adapter`, and refuses to pretend otherwise. A real deployment swaps one adapter module; the mandate gate, the ledger and the verifier are unchanged, because none of them know what a provider is.
+The provider adapter is simulated today — it names the API it would call, labels its receipt `simulated adapter`, and refuses to pretend otherwise. A real deployment swaps one module; the gate, ledger and verifier are unchanged.
 
 ### Why the Open Source mini challenge
 
-The whole boundary — policy gate, hash-chained ledger, provider adapters, offline verifier — is MIT-licensed and reproducible from https://github.com/owain323/spendlatch. It is a new repository created on 2026-09-18, inside the hackathon window, and the contribution is the project itself.
+The whole boundary — policy gate, hash-chained ledger, provider adapters, offline verifier — is MIT-licensed and reproducible from https://github.com/owain323/spendlatch. New repository, created 2026-09-18, inside the hackathon window; the contribution is the project itself.
 
-- **Repository and contribution URL:** https://github.com/owain323/spendlatch
-- **GitHub username:** `owain323`
-- **What was published:** a deterministic policy gate that turns a request into a spend intent and decides; a SHA-256 hash-chained ledger that records every decision including every refusal; a mandate (HMAC-SHA256, single-use, scope-capped, 15-minute expiry) as the only thing that unlocks execution; an offline verifier that re-checks an exported proof bundle; thirteen tools over MCP 2025-11-25 / Streamable HTTP with the approval card served as a `ui://` resource.
-- **Not only fixtures:** `tools/analyze_usage.py` reads a real usage export (10,901 requests across 137 days) and applies the same credits-per-call canary the demo uses. Seven of the 23 anonymized model ids carry enough history to judge, and all seven drift. The export stays local; the tool and its output are what we ship.
-- **How to check it:** `python run_checks.py` is the whole gate and takes about two minutes: byte-compile, 239 pytest tests, the sealed benchmark in all three tiers (12 public / 24 derived / 14 independent), an MCP wire probe 8/8, a real MCP client round trip against a real server subprocess, an integrity manifest over 122 files, an evidence-freshness check, the recorded test count, the submission copy, and a mutation check that deletes each of twelve guards one at a time and requires the suite to go red (single-process operators: a coverage claim, not a cross-process one). Two checks run as separate commands because they need the outside world. The first is `python tools/host_conformance.py --url https://spendlatch.owain32380.cn/mcp`: a client that is not ours, from the public internet, prints `HOST_CONFORMANCE_OK` when protocol 2025-11-25 is negotiated and the approval-card resource is served with the mcp-app profile. The second is `python benchmarks/run.py --independent`, for a single detection tier on its own. Zero credentials.
+- **Repository and contribution URL:** https://github.com/owain323/spendlatch · **GitHub username:** `owain323`
+- **What was published:** a deterministic policy gate; a SHA-256 hash-chained ledger that records every decision including every refusal; a mandate (HMAC-SHA256, single-use, scope-capped, 15-minute expiry) as the only thing that unlocks execution; an offline verifier for exported proof bundles; thirteen tools over MCP 2025-11-25 / Streamable HTTP, with the approval card served as a `ui://` resource.
+- **Not only fixtures:** `tools/analyze_usage.py` reads a real usage export (10,901 requests across 137 days) and applies the same credits-per-call canary the demo uses. Seven of the 23 anonymized model ids carry enough history to judge, and all seven drift. The export stays local; the tool and its output ship.
+- **How to check it:** `python run_checks.py` — 239 tests, three benchmark tiers, an MCP roundtrip against a real server subprocess, an integrity manifest over 122 files, evidence freshness, and a mutation check that deletes each of twelve guards. Five minutes, zero credentials.
 
 ### The friction log
 
-The build log is published in the required format — task attempted, steps taken, expected versus actual, severity, workaround, suggestion — at https://github.com/owain323/spendlatch/blob/main/friction-log.md. Two entries that cost the most time:
+Published in the required format at https://github.com/owain323/spendlatch/blob/main/friction-log.md — task attempted, steps taken, expected versus actual, severity, workaround, suggestion. Two entries that cost the most time:
 
-- **MCP Python SDK 2.0.0 removed `mcp.server.fastmcp`.** An unpinned install boots and dies, so the version has to be pinned below 2. Suggestion: keep the import path stable across a major, or ship a deprecation shim.
-- **Tool schemas are generated from docstrings, so the safety annotations a host relies on drift silently.** We wrote a conformance probe to catch it, and it immediately found four gaps. Suggestion: make `readOnly`/`destructive`/`idempotent` first-class fields rather than prose.
+- **MCP Python SDK 2.0.0 removed `mcp.server.fastmcp`.** An unpinned install boots and dies. Suggestion: keep the import path stable across a major, or ship a deprecation shim.
+- **Tool schemas are generated from docstrings, so the safety hints a host relies on drift silently.** Our conformance probe found four gaps on its first run. Suggestion: make `readOnly`/`destructive`/`idempotent` first-class fields rather than prose.
 
 ## 5. Fields to fill at submission time
 
