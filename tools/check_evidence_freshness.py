@@ -52,6 +52,9 @@ CREDENTIALED = {
 # code that actually produces the artifact: benchmark metrics depend on the
 # analysis function and the datasets, not on unrelated mcp_server modules.
 ANALYSIS = ["benchmarks", "mcp_server/tools.py", "mcp_server/sample_data.py"]
+# KNOWN GAP: docs/evidence/ still holds files this gate does not map -
+# real-usage-run.txt, cross-surface.txt and test-count.txt. Their freshness is
+# not checked here (test-count.txt is owned by tools/check_test_count.py).
 SOURCES = {
     "docs/evidence/test-run.txt": ["tests", "mcp_server", "agent", "benchmarks", "tools"],
     "docs/evidence/benchmark-run.txt": ANALYSIS + ["tools/make_derived.py"],
