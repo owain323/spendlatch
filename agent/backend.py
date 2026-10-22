@@ -185,9 +185,18 @@ def chat(req: ChatRequest) -> ChatResponse:
 
 
 @app.get("/api/opening", response_model=ChatResponse)
-def opening(session_id: str | None = None,
+def opening(request: Request, session_id: str | None = None,
             session_token: str | None = None) -> ChatResponse:
-    """Proactive first message; restores context when the session is known."""
+    """Proactive first message; restores context when the session is known.
+
+    The token is read through `_presented_token` like every other
+    authenticated route: header first, query string only for old clients. Not
+    doing so sent a Bearer-authenticated caller into the shared anonymous
+    workspace, where it saw other visitors' suppressed state - "0 issues
+    worth your attention" next to `stats.anomalies: 3` - while its own
+    workspace stayed empty.
+    """
+    session_token = _presented_token(request, session_token)
     session_id = session_id or uuid.uuid4().hex[:12]
     with _STATE_LOCK:
         store.set_workspace(store.workspace_for_token(session_token))
@@ -287,12 +296,33 @@ def run_attack(kind: str, req: ChatRequest) -> dict:
     """
     reply: str
     cards: list[dict]
+    fixture_error: str | None = None
     with _STATE_LOCK:
         store.set_workspace(store.workspace_for_token(req.session_token))
         try:
-            result = attacks.run_attack(kind)
+            try:
+                result = attacks.run_attack(kind)
+            except RuntimeError as exc:
+                # A fixture that cannot be built is a fact to report, not an
+                # ASGI exception: the attack button lives on the public demo,
+                # so an unhandled error here is a 500 on a judge's screen.
+                result = None
+                fixture_error = str(exc)
         finally:
             store.set_workspace(None)
+    if fixture_error is not None:
+        reply = (f"Attack '{kind}' did not run: the fixture could not be built "
+                 f"({fixture_error}). Nothing was proven either way - this is a "
+                 f"fixture problem, not a guard that held.")
+        return {"attack": kind, "ran": False, "refused": False,
+                "reason": fixture_error, "ledger_seq": None, "reply": reply,
+                "cards": [brain.refusal_card(
+                    action=f"attack:{kind}",
+                    reason=fixture_error,
+                    mandate_id=None,
+                    ledger_seq=None,
+                    policy="fixture integrity: an attack that cannot be built proves nothing",
+                    agent="attack-verifier")]}
     if "error" in result:
         reply = f"Unknown attack '{kind}'. Known: {', '.join(result['known'])}."
         cards = []
@@ -315,7 +345,7 @@ def run_attack(kind: str, req: ChatRequest) -> dict:
         reply = (f"WARNING: attack '{result['attack']}' was NOT refused - "
                  "a boundary did not hold. This is a broken guard, not a demo.")
         cards = []
-    return {"attack": kind, "refused": result.get("refused", False),
+    return {"attack": kind, "ran": True, "refused": result.get("refused", False),
             "reason": result.get("reason"), "ledger_seq": result.get("ledger_seq"),
             "reply": reply, "cards": cards}
 

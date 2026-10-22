@@ -7,7 +7,7 @@ Zero credentials required. Expected total time: under 5 minutes.
 
 ```bash
 # 1. Python >= 3.11; clone the repo, enter it
-pip install -e .          # or: pip install mcp fastapi uvicorn pytest
+pip install -e ".[dev]"   # pytest is in the dev extra — plain "pip install -e ." leaves run_checks unable to start
 
 # 2. Test suite
 python run_checks.py
@@ -48,9 +48,17 @@ PASS criteria for the web flow (all reproduced by `tools/e2e_flow.py`):
 5. `execute` again is refused — mandates are single-use, and the refusal is
    logged
 6. `set a $300 budget for home` returns a budget card at warn status (82.0%)
-7. Closing and reopening the page restores the budget (cross-session memory)
-8. `why didn't you tell me` returns the decision ledger with hold/suppress
-   entries and reasons; propose/approve/execute entries are present too
+7. Closing and reopening the page restores the budget (cross-session memory).
+   This second open is also what makes the ledger in criterion 8 show
+   suppress entries: the proactive pass records, once per finding per month,
+   what it chose not to repeat.
+8. `why didn't you tell me?` **reports how many findings it deliberately held
+   back** (0 on a first visit; open the page a second time in the same session
+   — as in criterion 7 — and the second proactive pass suppresses the
+   already-surfaced findings, so the number becomes 3). The chat answer is a
+   sentence with no cards by design: the entries themselves, with their
+   reasons, are in the Decision ledger panel and in `GET /api/ledger`, which
+   also carries the propose/approve/execute trail from steps 2-5.
 9. Anthropic appears as a KEEP card ("do NOT cut it"), never as an anomaly
 
 ## Notes for judges

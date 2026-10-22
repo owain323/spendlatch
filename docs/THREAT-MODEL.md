@@ -102,9 +102,20 @@ POST /api/session                      -> session_token
 POST /api/chat {"message":"approve",  session_token}  -> signed mandate
 ```
 
-**What this does protect:** an agent driving the MCP surface cannot approve
-itself — that path is refused and logged (T7), and a mandate signed on one
-surface is not transferable to another.
+**What this does protect:** an agent driving the MCP surface cannot *sign*:
+`approve_action` carries no session credential and is refused and logged (T7),
+and a mandate signed on one surface is not transferable to another.
+
+**What it does not protect, and the part that is easy to miss:** the one-time
+handoff code is returned **in the `propose_action` tool result**, because the
+demo has no other channel to reach a browser. A host is therefore trusted to
+carry that code to a human; the server cannot tell a person from the agent
+that was handed it. An agent that speaks both MCP and HTTP can therefore
+complete the whole loop — propose over MCP, redeem its own code over HTTP,
+approve, execute over MCP — with no human in it. That is the L1 boundary in
+its sharpest form: signing requires a session, and a session requires nothing.
+Closing it needs an identity layer (account linking, OAuth 2.1 + PKCE, AP2
+credentials), not another check inside `approve_action`.
 
 **What this does not protect:** a caller who speaks HTTP to the web surface
 can open its own session and approve. So the property the system actually

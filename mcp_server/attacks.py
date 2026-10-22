@@ -23,10 +23,44 @@ from datetime import datetime, timedelta, timezone
 from . import actions, store
 
 
+def _retire_open_proposals(action_id: str) -> int:
+    """Close any still-open proposal for `action_id` and say how many.
+
+    Needed because `propose_action` is idempotent while a proposal is open:
+    on a workspace that has been used before, it hands back the OLD proposal,
+    whose `proof_hash` was minted against a bill that has since moved. Approve
+    then refuses ("the proof changed since the proposal was minted") and the
+    fixture cannot be built at all - which is what made every stateful attack
+    endpoint return 500 on the shared anonymous workspace.
+    """
+    state = store.load_state(None)
+    retired = 0
+    for proposal in state["proposals"].values():
+        if proposal.get("action_id") == action_id and proposal.get("status") == "proposed":
+            proposal["status"] = "superseded"
+            proposal["superseded_reason"] = (
+                "retired by an attack fixture: its proof was minted against a "
+                "bill that has since changed, so it can no longer be approved")
+            retired += 1
+    if retired:
+        store.save_state(state, None)
+    return retired
+
+
 def _mint(action_id: str = "rightsize-ec2") -> dict:
-    proposal = actions.propose_action(action_id)
     token = actions.open_session()["session_token"]
-    mandate = actions.approve_action(proposal["proposal_id"], session_token=token)
+
+    def _propose_and_approve() -> dict:
+        proposal = actions.propose_action(action_id)
+        return actions.approve_action(proposal["proposal_id"], session_token=token)
+
+    mandate = _propose_and_approve()
+    if mandate.get("refused"):
+        # One retry from a fresh proposal before giving up: a stale open
+        # proposal is a state problem, not a broken guard, and a demo surface
+        # that 500s on its own residue is worse than one that repairs it.
+        _retire_open_proposals(action_id)
+        mandate = _propose_and_approve()
     if mandate.get("refused"):
         raise RuntimeError(f"fixture minting failed: {mandate['error']}")
     return mandate

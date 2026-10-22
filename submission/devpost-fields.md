@@ -47,14 +47,15 @@ vanilla JS, pytest, GitHub Actions, systemd on a Tencent Cloud VPS.
 
 ```
 git clone https://github.com/owain323/spendlatch && cd spendlatch
-pip install -e . pytest pillow
-python run_checks.py            # 232 tests, benchmark, probe, mutation, integrity
+pip install -e ".[dev]"
+python run_checks.py            # ~2 min: compile, 236 tests, 3 benchmark tiers, MCP probe, integrity, freshness, test count, submission copy, 12 mutation kills
+python tools/host_conformance.py --url https://spendlatch.owain32380.cn/mcp   # separate: needs the deployed endpoint
 python tools/verify_proof.py <bundle.json>   # offline verification
 ```
 
 ## Numbers to quote (verified 2026-10-21)
 
-- 232 pytest tests (230 in the gate + 2 wire round-trip)
+- 236 pytest tests (234 in the gate + 2 wire round-trip)
 - sealed benchmark 12/12 public, 14/14 independent, 24/24 derived invariance
 - mutation check 12/12 guards killed
 - 122 files under the integrity manifest

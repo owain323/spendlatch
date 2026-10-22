@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent.backend import app
-from mcp_server import ledger
+from mcp_server import ledger, store
 
 
 @pytest.fixture(autouse=True)
@@ -62,6 +62,54 @@ def test_unknown_attack_is_named_not_executed(client):
     body = client.post("/api/attack/nuke", json={"message": "x"}).json()
     assert "nuke" in body["reply"]
     assert body["cards"] == []
+
+
+def test_every_attack_is_refused_without_a_session_token(client):
+    """No token at all: still a refusal card, never a 500.
+
+    The anonymous workspace is the one every visitor shares, so it can hold an
+    open proposal whose proof predates the current bill. The fixture has to
+    repair that instead of raising: production returned 500 on four of these
+    five routes for exactly that reason.
+    """
+    for kind in sorted(EXPECTED_REASON):
+        res = client.post(f"/api/attack/{kind}", json={"message": "attack"})
+        assert res.status_code == 200, (kind, res.status_code, res.text[:300])
+        body = res.json()
+        assert body["ran"] is True, (kind, body.get("reason"))
+        assert body["refused"] is True, (kind, body.get("reason"))
+        assert body["cards"][0]["type"] == "denied", kind
+
+
+def test_a_stale_open_proposal_does_not_turn_the_attack_into_a_500(client):
+    """The exact production state: an open proposal whose proof no longer reproduces.
+
+    `propose_action` is idempotent while a proposal is open, so it hands this
+    one back; approve refuses it ("the proof changed since the proposal was
+    minted") and `_mint` used to raise, which surfaced as
+    `RuntimeError: fixture minting failed ...` and HTTP 500.
+    """
+    state = store.load_state(None)
+    state["proposals"]["p-stale"] = {
+        "proposal_id": "p-stale",
+        "action_id": "rightsize-ec2",
+        "title": "stale proposal from a previous bill",
+        "provider": "aws",
+        "operation": "ec2:ModifyInstanceAttribute",
+        "status": "proposed",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "proof_hash": "0" * 64,
+        "approval_challenge": "stale",
+        "proof_snapshot": {},
+    }
+    store.save_state(state, None)
+
+    res = client.post("/api/attack/replay", json={"message": "attack"})
+    assert res.status_code == 200, res.text[:300]
+    body = res.json()
+    assert body["refused"] is True, body.get("reason")
+    assert body["cards"][0]["type"] == "denied"
+    assert store.load_state(None)["proposals"]["p-stale"]["status"] == "superseded"
 
 
 def test_reported_approval_is_not_consent(client):

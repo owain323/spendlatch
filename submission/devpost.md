@@ -33,7 +33,7 @@ SpendLatch is the authorization boundary between an AI agent and a consequential
 
 Seven invariants, each one checkable against the repository:
 
-1. **Approval and execution are different surfaces.** The MCP tool surface cannot approve its own proposals — it is refused and logged. A human binds a proposal to their web session with a one-time handoff code, then approves it by id.
+1. **Approval and execution are different surfaces.** The tool surface cannot *submit* an approval: `approve_action` carries no session credential, so the call is refused and logged. Signing requires a web session token issued to the web surface. This is a capability boundary, not an identity boundary — the one-time handoff code is returned in the `propose_action` result, so the calling host is trusted to hand it to a person, and the server cannot verify who redeems it.
 2. **No mandate, no motion.** An action without a valid mandate is refused, never queued.
 3. **A mandate is single-use**, and single-use is not bookkeeping: it lives outside the bounded ledger, so log trimming or a status rewind cannot re-arm a spent mandate.
 4. **An issued mandate is immutable.** Raise the cap after approval and the signature breaks — it becomes an unsigned mandate, not a bigger one.
@@ -48,7 +48,7 @@ Every one of these has a test that fails when the guard behind it is deleted, an
 - A deterministic policy gate (Python) parses every request into a SpendIntent and decides — the LLM never owns financial authority.
 - A plan-check-execute ledger keeps the hash-chained decision ledger: every alert, hold, suppression and refusal is recorded with evidence.
 - A sandbox AWS adapter runs the approved action and issues a receipt bound to the mandate.
-- An MCP server (2025-11-25, Streamable HTTP) exposes the same tools to agent surfaces, but approval only exists on the human web surface.
+- An MCP server (2025-11-25, Streamable HTTP) exposes the same tools to agent surfaces, but signing requires a web session token — an `approve_action` call carrying none is refused and logged.
 - The web demo (FastAPI backend, zero-build vanilla JS frontend) runs live at https://spendlatch.owain32380.cn — you can run the full loop yourself: ask, prove, approve, execute, replay.
 
 ### Challenges we ran into
@@ -102,7 +102,7 @@ The MCP server (protocol 2025-11-25, Streamable HTTP) is exposed at https://spen
 Run `python tools/mcp_roundtrip.py` to reproduce this list over the wire, against a real server subprocess.
 
 **Q2. How does the user provide input to this tool?**
-The agent calls the tools with structured arguments on the user's behalf. Approval is the exception: approve_action only exists on the human web surface — the MCP surface can execute, but cannot approve itself.
+The agent calls the tools with structured arguments on the user's behalf. Approval is the exception: `approve_action` is registered on the tool surface, but it refuses unless a web session token is presented, so this surface can execute what a person signed and cannot sign anything itself.
 
 **Q3. How does the tool communicate results back to the user?**
 The same structured cards and receipts as the web surface, plus the hash-chained ledger entry. A refused execution returns the refusal reason and the ledger sequence number.
@@ -172,7 +172,7 @@ The whole boundary — policy gate, hash-chained ledger, provider adapters, offl
 - **GitHub username:** `owain323`
 - **What was published:** a deterministic policy gate that turns a request into a spend intent and decides; a SHA-256 hash-chained ledger that records every decision including every refusal; a mandate (HMAC-SHA256, single-use, scope-capped, 15-minute expiry) as the only thing that unlocks execution; an offline verifier that re-checks an exported proof bundle; thirteen tools over MCP 2025-11-25 / Streamable HTTP with the approval card served as a `ui://` resource.
 - **Not only fixtures:** `tools/analyze_usage.py` reads a real usage export (10,901 requests across 137 days) and applies the same credits-per-call canary the demo uses. Seven of the 23 anonymized model ids carry enough history to judge, and all seven drift. The export stays local; the tool and its output are what we ship.
-- **How to check it:** `python run_checks.py` runs the whole set — 232 pytest tests, a sealed three-tier benchmark 12/12, an MCP wire probe 8/8, a real MCP client round trip against a real server subprocess, a host-conformance probe against the deployed endpoint, an integrity manifest over 122 files, an evidence-freshness check, and a mutation check that deletes each of twelve guards one at a time and requires the suite to go red. Five minutes, zero credentials.
+- **How to check it:** `python run_checks.py` is the whole gate and takes about two minutes: byte-compile, 236 pytest tests, the sealed benchmark in all three tiers (12 public / 24 derived / 14 independent), an MCP wire probe 8/8, a real MCP client round trip against a real server subprocess, an integrity manifest over 122 files, an evidence-freshness check, the recorded test count, the submission copy, and a mutation check that deletes each of twelve guards one at a time and requires the suite to go red. Two checks run as separate commands because they need the outside world. The first is `python tools/host_conformance.py --url https://spendlatch.owain32380.cn/mcp`: a client that is not ours, from the public internet, prints `HOST_CONFORMANCE_OK` when protocol 2025-11-25 is negotiated and the approval-card resource is served with the mcp-app profile. The second is `python benchmarks/run.py --independent`, for a single detection tier on its own. Zero credentials.
 
 ### The friction log
 

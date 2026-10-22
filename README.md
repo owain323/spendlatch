@@ -106,7 +106,7 @@ because "we take security seriously" is not a claim anyone can check.
 
 | # | Invariant | Held by | Fails when |
 |---|---|---|---|
-| **I1** | **Approval and execution are different surfaces.** The MCP tool surface cannot approve its own proposals. | `actions.approve_action` requires an authenticated web session token; the MCP tool calls with none and is refused and logged | `TestAuthorizationBoundary`, `test_approving_without_a_session_is_denied_and_logged` |
+| **I1** | **Approval and execution are different surfaces.** The MCP tool surface cannot *submit* an approval: a tool call to `approve_action` carries no session credential and is refused and logged. Signing requires a web session token. **This is a capability boundary, not an identity boundary** — the one-time handoff code that binds a proposal to a web session is returned in the `propose_action` tool result, so a host is trusted to hand it to a human; the server cannot verify who redeems it. See [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) L1. | `actions.approve_action` requires an authenticated web session token; the MCP tool calls with none and is refused and logged | `TestAuthorizationBoundary`, `test_approving_without_a_session_is_denied_and_logged` |
 | **I2** | **No mandate, no motion.** A request to act without a valid mandate is refused, not queued and not performed. | `actions.execute_action` | `test_execute_with_no_mandate_is_denied_and_logged` |
 | **I3** | **A mandate can produce at most one successful execution.** (The invariant is stated as an outcome, not as a field: `consumed == true` is the implementation, "at most one execution" is the promise.) | The claim is written *before* the provider runs and lives in `state["consumed"]`, deliberately *outside* the bounded ledger, so it cannot evaporate under log trimming or be re-armed by rewinding `status`. The whole check-claim-execute section runs under a process lock | `test_the_identical_request_twice_produces_one_receipt`, `test_rollback_of_status_does_not_allow_a_second_execution`, `test_ten_concurrent_executes_produce_exactly_one_receipt` (10 concurrent callers → 1 execution, 9 single-use refusals) |
 | **I4** | **An issued mandate is immutable.** | Scope (provider, operation, cap) is inside `SIGNED_FIELDS`; editing it invalidates the HMAC — a raised cap becomes an *unsigned* mandate, not a bigger one | `test_raising_the_cap_after_approval_does_not_take_effect` |
@@ -163,11 +163,11 @@ semantics** — not "exactly once external spending".
 - **MCP Apps native** — `propose_action` links an interactive approval card
   (`ui://spendlatch/approval-card`, `text/html;profile=mcp-app`) that hosts
   render inline; the same HTML speaks the postMessage JSON-RPC bridge.
-- **The MCP server is the product** — 13 typed tools, 232 pytest tests, a sealed
+- **The MCP server is the product** — 13 typed tools, 236 pytest tests, a sealed
   benchmark.
 
   *The four numbers, stated so they cannot be confused:*
-  **232** pytest tests collected — of which the gate's pytest step runs
+  **236** pytest tests collected — of which the gate's pytest step runs
   **230** and the remaining **2** (`tests/test_mcp_roundtrip.py`) run as the
   separate MCP step, because they spawn a real server subprocess.
   On top of that: **12/12** sealed benchmark cases, **8/8** MCP wire-probe
@@ -227,7 +227,7 @@ Annotated walkthrough with figures: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 Requires Python ≥ 3.11. Zero credentials needed.
 
 ```bash
-pip install -e .            # or: pip install mcp fastapi uvicorn pytest
+pip install -e ".[dev]"     # pytest lives in the dev extra; "pip install -e ." alone cannot run the gate
 python run_checks.py        # tests + sealed benchmark + MCP wire roundtrip + integrity
 
 # Surface 1: the MCP server (Streamable HTTP)
@@ -254,14 +254,22 @@ Judges: see [docs/JUDGE-REPRODUCTION.md](docs/JUDGE-REPRODUCTION.md) for the
 
 ## Verification status
 
+Everything in the table below is re-run by `python run_checks.py` (~2 minutes,
+CI included) unless it says otherwise. Two checks are **manual by necessity**
+and are marked so rather than quietly counted as gated: the host-conformance
+probe against the deployed endpoint (it needs the deployment to be up) and the
+AWS smoke run (it needs a billed account).
+
 | Claim | Evidence |
 |---|---|
-| 232 automated tests pass — 230 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
-| Detection, three honestly-labeled tiers: public regression 12/12; independent hand-written suite 14/14 (boundary values, split verdicts, cross-rule interactions); derived invariance suite 24/24 (mechanical transformations of the public fixtures — proves invariance, NOT generalization) | `benchmarks/results/metrics.json`, `benchmarks/results/independent-metrics.json`, `benchmarks/results/derived-metrics.json` |
+| 236 automated tests pass — 234 in the pytest step + 2 wire round-trip run separately (tools, ledger, store, actions, planner, API, MCP wire) | `docs/evidence/test-run.txt` |
+| Detection, three honestly-labeled tiers: public regression 12/12; independent hand-written suite 14/14 (boundary values, split verdicts, cross-rule interactions); derived invariance suite 24/24 (mechanical transformations of the public fixtures — proves invariance, NOT generalization). **All three tiers are in the gate**, not just the public one | `benchmarks/results/metrics.json`, `benchmarks/results/independent-metrics.json`, `benchmarks/results/derived-metrics.json` |
+| 12 of 12 guards are covered — deleting each one in a copy of the repo turns its tests red (`tools/mutation_check.py`, ~50s, **in the gate**) | mutation output in the `run_checks.py` transcript |
 | Real MCP client roundtrip: protocol 2025-11-25, 13/13 tools, action loop + ui:// resource over the wire | `docs/evidence/mcp-roundtrip.txt` |
 | End-to-end web flow (9 criteria, incl. mandate replay refusal) | `docs/evidence/e2e-flow.txt` |
 | Proof bundle export + offline consistency check (7 checks over the bundle vs. the state file; same-secret self-verification — NOT independent attestation) | `tools/verify_proof.py`, `tests/test_verify.py` |
 | Bill crossfoot: derived line items, internal consistency verified (demo-mode check on synthetic data — never "independently verified") | `mcp_server/crossfoot.py`, `tests/test_crossfoot.py` |
+| **Manual, not gated:** host conformance against the deployed endpoint (`python tools/host_conformance.py --url https://spendlatch.owain32380.cn/mcp`) | `docs/evidence/host-conformance-public.txt` |
 
 Full claim-to-evidence binding: [docs/CLAIMS.md](docs/CLAIMS.md).
 Graded evidence register (what is NOT verified is marked so): [docs/EVIDENCE.md](docs/EVIDENCE.md).
