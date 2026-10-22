@@ -103,25 +103,25 @@ POST /api/chat {"message":"approve",  session_token}  -> signed mandate
 ```
 
 **What this does protect:** an agent driving the MCP surface cannot *sign*:
-`approve_action` carries no session credential and is refused and logged (T7),
-and a mandate signed on one surface is not transferable to another.
+`approve_action` carries no session credential and is refused and logged (T7).
+The mandate record itself stays in the workspace it was signed in; what bridges
+the two surfaces is the code, not a shared file.
 
-**What it does not protect, and the part that is easy to miss:** the one-time
-handoff code is returned **in the `propose_action` tool result**, because the
-demo has no other channel to reach a browser. A host is therefore trusted to
-carry that code to a human; the server cannot tell a person from the agent
-that was handed it. An agent that speaks both MCP and HTTP can therefore
+**What it does not protect — in both directions.** First, a caller who speaks
+HTTP to the web surface can mint its own session and approve; the session is a
+capability, and nothing behind it is verified. Second, and easier to miss, the
+one-time handoff code is returned **in the `propose_action` tool result**,
+because the demo has no other channel to reach a browser. A host is therefore
+trusted to carry that code to a human, and the server cannot tell a person from
+the agent that was handed it: an agent that speaks both MCP and HTTP can
 complete the whole loop — propose over MCP, redeem its own code over HTTP,
-approve, execute over MCP — with no human in it. That is the L1 boundary in
-its sharpest form: signing requires a session, and a session requires nothing.
+approve, execute over MCP — with no human in it. That is this boundary in its
+sharpest form: signing requires a session, and a session requires nothing.
 Closing it needs an identity layer (account linking, OAuth 2.1 + PKCE, AP2
-credentials), not another check inside `approve_action`.
-
-**What this does not protect:** a caller who speaks HTTP to the web surface
-can open its own session and approve. So the property the system actually
-provides today is *"approval requires a separate surface and produces a
-bounded, single-use, verifiable artifact"* — not *"approval requires a
-verified human"*.
+credentials), not another check inside `approve_action`. So the property the
+system actually provides today is *"approval requires a separate surface and
+produces a bounded, single-use, verifiable artifact"* — not *"approval requires
+a verified human"*.
 
 **Why it is written down rather than fixed:** the demo holds no identity
 provider and no credentials by design, and every identity mechanism that
