@@ -1,8 +1,11 @@
-# Host conformance against the DEPLOYED endpoint 2026-10-21T09:24:08Z
+# Host conformance against the DEPLOYED endpoint 2026-10-22T06:16:11Z
 # endpoint: https://spendlatch.owain32380.cn/mcp
 # generator: tools/host_conformance.py --url (a client that is not part of
 #            the server, connecting over the public internet, TLS-terminated
 #            by Caddy in front of the loopback-bound MCP server)
+# Captured while the deployment still ran the pre-fix build: this probe checks
+# protocol negotiation, tool contracts, safety hints and the ui:// resource,
+# none of which the endpoint fixes touched. Re-run it after the next deploy.
 # This artifact cannot be produced without the deployment being live. If the
 # server changes, regenerate it: python tools/host_conformance.py --url ...
 
